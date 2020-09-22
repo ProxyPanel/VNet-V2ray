@@ -1,0 +1,4 @@
+*.DS_Store
+bazel-*
+.idea
+v2ray-*-*.zip

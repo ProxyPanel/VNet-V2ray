@@ -1,0 +1,6 @@
+{
+  "api_server": "",
+  "key": "",
+  "node_id": 0,
+  "log_path": "/var/log/v2ray/vnet-v2ray.log"
+}

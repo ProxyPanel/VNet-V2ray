@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package v2ray.core.app.traffic;
+option csharp_namespace = "V2Ray.Core.App.Traffic";
+option go_package = "traffic";
+option java_package = "com.v2ray.core.app.traffic";
+option java_multiple_files = true;
+
+message Config {
+    string api_server = 1;
+    string key = 2;
+    int32 node_id = 3;
+}

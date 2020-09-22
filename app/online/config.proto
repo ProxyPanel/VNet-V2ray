@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package v2ray.core.app.online;
+option csharp_namespace = "V2Ray.Core.App.Online";
+option go_package = "online";
+option java_package = "com.v2ray.core.app.online";
+option java_multiple_files = true;
+
+message Config {
+    string api_server = 1;
+    string key = 2;
+    int32 node_id = 3;
+}

@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package v2ray.core.app.rule;
+option csharp_namespace = "V2Ray.Core.App.Rule";
+option go_package = "rule";
+option java_package = "com.v2ray.core.app.rule";
+option java_multiple_files = true;
+
+message Config {
+    string api_server = 1;
+    string key = 2;
+    int32 node_id = 3;
+    string redirect_url = 4;
+}
