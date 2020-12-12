@@ -1,31 +1,14 @@
 # VNet-V2ray
 
-[![Build Status][1]][2] [![codecov.io][3]][4] [![GoDoc][5]][6] [![codebeat][7]][8] [![Downloads][9]][10]
+# 编译
+1. 安装 go语言, bazel
+2. 依次运行
+```sh
+git clone https://github.com/ProxyPanel/VNet-V2ray.git vent-v2ray && cd vent-v2ray
+go mod tidy
+bazel build --action_env=PATH=$PATH --action_env=SPWD=$PWD --action_env=GOPATH=$(go env GOPATH) --action_env=GOCACHE=$(go env GOCACHE) --spawn_strategy local //release_vnet:v2ray_linux_amd64_package
+```
+3. 获得 `bazel-bin/release_vnet/v2ray-linux-64.zip`
 
-[1]: https://dev.azure.com/v2ray/core/_apis/build/status/v2ray.core "Build Status badge"
-[2]: https://dev.azure.com/v2ray/core/_build/latest?definitionId=1 "Azure Build Status"
-[3]: https://codecov.io/github/v2ray/v2ray-core/coverage.svg?branch=master "Coverage badge"
-[4]: https://codecov.io/github/v2ray/v2ray-core?branch=master "Codecov Status"
-[5]: https://godoc.org/v2ray.com/core?status.svg "GoDoc badge"
-[6]: https://godoc.org/v2ray.com/core "GoDoc"
-[7]: https://codebeat.co/badges/f2354ca8-3e24-463d-a2e3-159af73b2477 "Codebeat badge"
-[8]: https://codebeat.co/projects/github-com-v2ray-v2ray-core-master "Codebeat"
-[9]: https://img.shields.io/github/downloads/v2ray/v2ray-core/total.svg "All releases badge"
-[10]: https://github.com/v2ray/v2ray-core/releases/ "All releases number"
-
-Project V is a set of network tools that help you to build your own computer network. It secures your network connections and thus protects your privacy. See [our website](https://www.v2ray.com/) for more information.
-
-## License
-
-v2ray follow [The MIT License (MIT)](https://raw.githubusercontent.com/v2ray/v2ray-core/master/LICENSE)
-
-## Credits
-
-This repo relies on the following third-party projects:
-
-* In production:
-  * [gorilla/websocket](https://github.com/gorilla/websocket)
-  * [gRPC](https://google.golang.org/grpc)
-* For testing only:
-  * [miekg/dns](https://github.com/miekg/dns)
-  * [h12w/socks](https://github.com/h12w/socks)
+# License
+ GNU GENERAL PUBLIC LICENSE

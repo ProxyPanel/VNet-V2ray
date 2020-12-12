@@ -3,11 +3,12 @@ package controller
 import (
 	"context"
 	"fmt"
-	"github.com/r3labs/diff"
 	"os"
 	"runtime"
 	"strconv"
 	"time"
+
+	"github.com/r3labs/diff"
 	"v2ray.com/core"
 	"v2ray.com/core/app/proxyman"
 	"v2ray.com/core/common"
@@ -21,6 +22,7 @@ import (
 	"v2ray.com/core/common/serial"
 	"v2ray.com/core/common/task"
 	"v2ray.com/core/common/uuid"
+	controllerInterface "v2ray.com/core/features/controller"
 	"v2ray.com/core/features/inbound"
 	"v2ray.com/core/infra/conf"
 	"v2ray.com/core/proxy"
@@ -30,7 +32,6 @@ import (
 	"v2ray.com/core/transport/internet"
 	"v2ray.com/core/transport/internet/tls"
 	"v2ray.com/core/transport/internet/websocket"
-	controllerInterface "v2ray.com/core/features/controller"
 )
 
 //go:generate errorgen
@@ -234,8 +235,7 @@ func (c *Controller) buildInboundConfig(info *api.NodeInfo) (*core.InboundHandle
 
 func (c *Controller) buildOutboundConfig(info *api.NodeInfo) (*core.OutboundHandlerConfig, error) {
 
-	sendConfig := &proxyman.SenderConfig{
-	}
+	sendConfig := &proxyman.SenderConfig{}
 
 	freedomConfig := &freedom.Config{
 		DomainStrategy: freedom.Config_USE_IP,
@@ -287,6 +287,7 @@ func (c *Controller) getUserFromRemote() error {
 					continue
 				}
 				account.ID = protocol.NewID(id)
+				account.AlterIDs = protocol.NewAlterIDs(account.ID, uint16(c.nodeInfo.V2AlterID))
 				user.Account = account
 				memoryUserList = append(memoryUserList, user)
 				log.Record(&log.GeneralMessage{
