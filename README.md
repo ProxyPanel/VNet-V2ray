@@ -1,7 +1,7 @@
 # VNet-V2ray
 
 # 编译
-1. 安装 go语言, bazel
+1. [Go语言](https://golang.org/), [Bazel](https://docs.bazel.build/)
 2. 依次运行
 ```sh
 git clone https://github.com/ProxyPanel/VNet-V2ray.git vent-v2ray && cd vent-v2ray

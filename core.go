@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	version  = "1.6.0"
+	version  = "1.7.0"
 	build    = "Custom"
 	codename = "vnet-v2ray"
 	intro    = "A unified platform for anti-censorship."
