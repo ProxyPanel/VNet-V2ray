@@ -148,7 +148,7 @@ archAffix() {
 downloadV2Ray() {
   rm -rf /tmp/v2ray
   mkdir -p /tmp/v2ray
-  DOWNLOAD_LINK="https://kitami-hk.oss-cn-hongkong.aliyuncs.com/vnet-v2ray/${NEW_VER}/v2ray-linux-${VDIS}.zip"
+  DOWNLOAD_LINK="https://github.com/ProxyPanel/VNet-V2ray/releases/download/${NEW_VER}/v2ray-linux-${VDIS}.zip"
   colorEcho ${BLUE} "Downloading V2Ray: ${DOWNLOAD_LINK}"
   curl ${PROXY} -L -H "Cache-Control: no-cache" -o ${ZIPFILE} ${DOWNLOAD_LINK}
   if [ $? != 0 ]; then
@@ -239,7 +239,7 @@ getVersion() {
     VER="$(${BIN_ROOT}/${BIN_NAME} -version 2>/dev/null)"
     RETVAL=$?
     CUR_VER="$(normalizeVersion "$(echo "$VER" | head -n 1 | cut -d " " -f2)")"
-    TAG_URL="https://kitami-hk.oss-cn-hongkong.aliyuncs.com/vnet-v2ray/version.json"
+    TAG_URL="https://raw.githubusercontent.com/ProxyPanel/VNet-V2ray/master/release_vnet/version.json"
     NEW_VER="$(normalizeVersion "$(curl ${PROXY} -s "${TAG_URL}" --connect-timeout 10 | grep 'latest' | cut -d\" -f4)")"
 
     if [[ $? -ne 0 ]] || [[ $NEW_VER == "" ]]; then
