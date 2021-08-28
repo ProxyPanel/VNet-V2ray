@@ -4,7 +4,7 @@ import (
 	"crypto/cipher"
 	"io"
 
-	"v2ray.com/core/common/buf"
+	"github.com/v2fly/v2ray-core/v4/common/buf"
 )
 
 type CryptionReader struct {
@@ -27,9 +27,7 @@ func (r *CryptionReader) Read(data []byte) (int, error) {
 	return nBytes, err
 }
 
-var (
-	_ buf.Writer = (*CryptionWriter)(nil)
-)
+var _ buf.Writer = (*CryptionWriter)(nil)
 
 type CryptionWriter struct {
 	stream    cipher.Stream

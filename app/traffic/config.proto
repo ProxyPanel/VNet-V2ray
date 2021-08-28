@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package v2ray.core.app.traffic;
 option csharp_namespace = "V2Ray.Core.App.Traffic";
-option go_package = "traffic";
+option go_package = "github.com/v2fly/v2ray-core/v4/app/traffic";
 option java_package = "com.v2ray.core.app.traffic";
 option java_multiple_files = true;
 

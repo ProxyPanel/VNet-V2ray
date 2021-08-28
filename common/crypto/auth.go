@@ -5,10 +5,11 @@ import (
 	"io"
 	"math/rand"
 
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/buf"
-	"v2ray.com/core/common/bytespool"
-	"v2ray.com/core/common/protocol"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/buf"
+	"github.com/v2fly/v2ray-core/v4/common/bytespool"
+	"github.com/v2fly/v2ray-core/v4/common/errors"
+	"github.com/v2fly/v2ray-core/v4/common/protocol"
 )
 
 type BytesGenerator func() []byte
@@ -248,13 +249,14 @@ func (w *AuthenticationWriter) seal(b []byte) (*buf.Buffer, error) {
 		paddingSize = int32(w.padding.NextPaddingLen())
 	}
 
-	totalSize := encryptedSize + paddingSize
+	sizeBytes := w.sizeParser.SizeBytes()
+	totalSize := sizeBytes + encryptedSize + paddingSize
 	if totalSize > buf.Size {
 		return nil, newError("size too large: ", totalSize)
 	}
 
 	eb := buf.New()
-	w.sizeParser.Encode(uint16(encryptedSize+paddingSize), eb.Extend(w.sizeParser.SizeBytes()))
+	w.sizeParser.Encode(uint16(encryptedSize+paddingSize), eb.Extend(sizeBytes))
 	if _, err := w.auth.Seal(eb.Extend(encryptedSize)[:0], b); err != nil {
 		eb.Release()
 		return nil, err
@@ -277,7 +279,11 @@ func (w *AuthenticationWriter) writeStream(mb buf.MultiBuffer) error {
 	}
 
 	payloadSize := buf.Size - int32(w.auth.Overhead()) - w.sizeParser.SizeBytes() - maxPadding
-	mb2Write := make(buf.MultiBuffer, 0, len(mb)+10)
+	if len(mb)+10 > 64*1024*1024 {
+		return errors.New("value too large")
+	}
+	sliceSize := len(mb) + 10
+	mb2Write := make(buf.MultiBuffer, 0, sliceSize)
 
 	temp := buf.New()
 	defer temp.Release()
@@ -289,7 +295,6 @@ func (w *AuthenticationWriter) writeStream(mb buf.MultiBuffer) error {
 		mb = nb
 
 		eb, err := w.seal(rawBytes[:nBytes])
-
 		if err != nil {
 			buf.ReleaseMulti(mb2Write)
 			return err
@@ -306,7 +311,11 @@ func (w *AuthenticationWriter) writeStream(mb buf.MultiBuffer) error {
 func (w *AuthenticationWriter) writePacket(mb buf.MultiBuffer) error {
 	defer buf.ReleaseMulti(mb)
 
-	mb2Write := make(buf.MultiBuffer, 0, len(mb)+1)
+	if len(mb)+1 > 64*1024*1024 {
+		return errors.New("value too large")
+	}
+	sliceSize := len(mb) + 1
+	mb2Write := make(buf.MultiBuffer, 0, sliceSize)
 
 	for _, b := range mb {
 		if b.IsEmpty() {

@@ -114,4 +114,3 @@ func NewWriter(writer io.Writer) Writer {
 		Writer: writer,
 	}
 }
-

@@ -3,13 +3,13 @@ package conf_test
 import (
 	"testing"
 
-	. "v2ray.com/core/infra/conf"
-	"v2ray.com/core/proxy/http"
+	. "github.com/v2fly/v2ray-core/v4/infra/conf"
+	"github.com/v2fly/v2ray-core/v4/proxy/http"
 )
 
-func TestHttpServerConfig(t *testing.T) {
+func TestHTTPServerConfig(t *testing.T) {
 	creator := func() Buildable {
-		return new(HttpServerConfig)
+		return new(HTTPServerConfig)
 	}
 
 	runMultiTestCase(t, []TestCase{

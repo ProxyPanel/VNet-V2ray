@@ -4,14 +4,14 @@ import (
 	"bytes"
 	"crypto/rand"
 	"io"
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"io/ioutil"
-	"os"
 
-	"v2ray.com/core/common"
-	. "v2ray.com/core/common/buf"
+	"github.com/v2fly/v2ray-core/v4/common"
+	. "github.com/v2fly/v2ray-core/v4/common/buf"
 )
 
 func TestMultiBufferRead(t *testing.T) {

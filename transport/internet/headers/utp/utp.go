@@ -4,14 +4,14 @@ import (
 	"context"
 	"encoding/binary"
 
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/dice"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/dice"
 )
 
 type UTP struct {
 	header       byte
 	extension    byte
-	connectionId uint16
+	connectionID uint16
 }
 
 func (*UTP) Size() int32 {
@@ -20,7 +20,7 @@ func (*UTP) Size() int32 {
 
 // Serialize implements PacketHeader.
 func (u *UTP) Serialize(b []byte) {
-	binary.BigEndian.PutUint16(b, u.connectionId)
+	binary.BigEndian.PutUint16(b, u.connectionID)
 	b[2] = u.header
 	b[3] = u.extension
 }
@@ -30,7 +30,7 @@ func New(ctx context.Context, config interface{}) (interface{}, error) {
 	return &UTP{
 		header:       1,
 		extension:    0,
-		connectionId: dice.RollUint16(),
+		connectionID: dice.RollUint16(),
 	}, nil
 }
 

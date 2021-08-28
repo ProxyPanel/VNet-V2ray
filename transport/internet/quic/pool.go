@@ -5,7 +5,7 @@ package quic
 import (
 	"sync"
 
-	"v2ray.com/core/common/bytespool"
+	"github.com/v2fly/v2ray-core/v4/common/bytespool"
 )
 
 var pool *sync.Pool
@@ -19,5 +19,5 @@ func getBuffer() []byte {
 }
 
 func putBuffer(p []byte) {
-	pool.Put(p)
+	pool.Put(p) // nolint: staticcheck
 }

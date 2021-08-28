@@ -7,6 +7,8 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/go-acme/lego/v3/certcrypto"
 	"github.com/go-acme/lego/v3/certificate"
 	"github.com/go-acme/lego/v3/challenge"
@@ -16,8 +18,8 @@ import (
 	"github.com/go-acme/lego/v3/providers/dns/gandi"
 	"github.com/go-acme/lego/v3/providers/dns/godaddy"
 	"github.com/go-acme/lego/v3/registration"
-	"time"
-	"v2ray.com/core/transport/internet/tls"
+
+	"github.com/v2fly/v2ray-core/v4/transport/internet/tls"
 )
 
 // You'll need a user or account type that implements acme.User

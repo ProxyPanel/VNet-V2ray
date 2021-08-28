@@ -3,16 +3,18 @@
 package router
 
 import (
-	"v2ray.com/core/common/dice"
-	"v2ray.com/core/features/outbound"
+	"context"
+
+	"github.com/v2fly/v2ray-core/v4/common/dice"
+	"github.com/v2fly/v2ray-core/v4/features/extension"
+	"github.com/v2fly/v2ray-core/v4/features/outbound"
 )
 
 type BalancingStrategy interface {
 	PickOutbound([]string) string
 }
 
-type RandomStrategy struct {
-}
+type RandomStrategy struct{}
 
 func (s *RandomStrategy) PickOutbound(tags []string) string {
 	n := len(tags)
@@ -43,4 +45,10 @@ func (b *Balancer) PickOutbound() (string, error) {
 		return "", newError("balancing strategy returns empty tag")
 	}
 	return tag, nil
+}
+
+func (b *Balancer) InjectContext(ctx context.Context) {
+	if contextReceiver, ok := b.strategy.(extension.ContextReceiver); ok {
+		contextReceiver.InjectContext(ctx)
+	}
 }

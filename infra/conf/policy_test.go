@@ -3,8 +3,8 @@ package conf_test
 import (
 	"testing"
 
-	"v2ray.com/core/common"
-	. "v2ray.com/core/infra/conf"
+	"github.com/v2fly/v2ray-core/v4/common"
+	. "github.com/v2fly/v2ray-core/v4/infra/conf"
 )
 
 func TestBufferSize(t *testing.T) {
@@ -27,7 +27,7 @@ func TestBufferSize(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		bs := int32(c.Input)
+		bs := c.Input
 		pConf := Policy{
 			BufferSize: &bs,
 		}

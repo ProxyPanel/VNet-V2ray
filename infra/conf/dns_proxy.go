@@ -2,17 +2,19 @@ package conf
 
 import (
 	"github.com/golang/protobuf/proto"
-	"v2ray.com/core/common/net"
-	"v2ray.com/core/proxy/dns"
+
+	"github.com/v2fly/v2ray-core/v4/common/net"
+	"github.com/v2fly/v2ray-core/v4/infra/conf/cfgcommon"
+	"github.com/v2fly/v2ray-core/v4/proxy/dns"
 )
 
-type DnsOutboundConfig struct {
-	Network Network  `json:"network"`
-	Address *Address `json:"address"`
-	Port    uint16   `json:"port"`
+type DNSOutboundConfig struct {
+	Network cfgcommon.Network  `json:"network"`
+	Address *cfgcommon.Address `json:"address"`
+	Port    uint16             `json:"port"`
 }
 
-func (c *DnsOutboundConfig) Build() (proto.Message, error) {
+func (c *DNSOutboundConfig) Build() (proto.Message, error) {
 	config := &dns.Config{
 		Server: &net.Endpoint{
 			Network: c.Network.Build(),

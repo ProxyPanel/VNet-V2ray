@@ -3,7 +3,7 @@ package udp
 import (
 	"fmt"
 
-	"v2ray.com/core/common/net"
+	"github.com/v2fly/v2ray-core/v4/common/net"
 )
 
 type Server struct {
@@ -27,6 +27,7 @@ func (server *Server) Start() (net.Destination, error) {
 
 	server.conn = conn
 	go server.handleConnection(conn)
+
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
 	return net.UDPDestination(net.IPAddress(localAddr.IP), net.Port(localAddr.Port)), nil
 }

@@ -8,9 +8,10 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/proto"
-	"v2ray.com/core/common"
-	"v2ray.com/core/infra/conf"
-	"v2ray.com/core/infra/conf/serial"
+
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/infra/conf"
+	"github.com/v2fly/v2ray-core/v4/infra/conf/serial"
 )
 
 // ConfigCommand is the json to pb convert struct
@@ -66,13 +67,15 @@ func (c *ConfigCommand) Execute(args []string) error {
 
 // LoadArg loads one arg, maybe an remote url, or local file path
 func (c *ConfigCommand) LoadArg(arg string) (out io.Reader, err error) {
-
 	var data []byte
-	if strings.HasPrefix(arg, "http://") || strings.HasPrefix(arg, "https://") {
+	switch {
+	case strings.HasPrefix(arg, "http://"), strings.HasPrefix(arg, "https://"):
 		data, err = FetchHTTPContent(arg)
-	} else if arg == "stdin:" {
+
+	case arg == "stdin:":
 		data, err = ioutil.ReadAll(os.Stdin)
-	} else {
+
+	default:
 		data, err = ioutil.ReadFile(arg)
 	}
 

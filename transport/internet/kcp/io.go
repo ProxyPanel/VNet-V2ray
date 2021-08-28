@@ -7,9 +7,9 @@ import (
 	"crypto/rand"
 	"io"
 
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/buf"
-	"v2ray.com/core/transport/internet"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/buf"
+	"github.com/v2fly/v2ray-core/v4/transport/internet"
 )
 
 type PacketReader interface {
@@ -21,7 +21,7 @@ type PacketWriter interface {
 	io.Writer
 }
 
-type KCPPacketReader struct {
+type KCPPacketReader struct { // nolint: golint
 	Security cipher.AEAD
 	Header   internet.PacketHeader
 }
@@ -57,7 +57,7 @@ func (r *KCPPacketReader) Read(b []byte) []Segment {
 	return result
 }
 
-type KCPPacketWriter struct {
+type KCPPacketWriter struct { // nolint: golint
 	Header   internet.PacketHeader
 	Security cipher.AEAD
 	Writer   io.Writer

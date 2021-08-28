@@ -6,18 +6,18 @@ import (
 	"sync"
 	"time"
 
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/buf"
-	"v2ray.com/core/common/errors"
-	"v2ray.com/core/common/net"
-	"v2ray.com/core/common/protocol"
-	"v2ray.com/core/common/session"
-	"v2ray.com/core/common/signal/done"
-	"v2ray.com/core/common/task"
-	"v2ray.com/core/proxy"
-	"v2ray.com/core/transport"
-	"v2ray.com/core/transport/internet"
-	"v2ray.com/core/transport/pipe"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/buf"
+	"github.com/v2fly/v2ray-core/v4/common/errors"
+	"github.com/v2fly/v2ray-core/v4/common/net"
+	"github.com/v2fly/v2ray-core/v4/common/protocol"
+	"github.com/v2fly/v2ray-core/v4/common/session"
+	"github.com/v2fly/v2ray-core/v4/common/signal/done"
+	"github.com/v2fly/v2ray-core/v4/common/task"
+	"github.com/v2fly/v2ray-core/v4/proxy"
+	"github.com/v2fly/v2ray-core/v4/transport"
+	"github.com/v2fly/v2ray-core/v4/transport/internet"
+	"github.com/v2fly/v2ray-core/v4/transport/pipe"
 )
 
 type ClientManager struct {
@@ -83,7 +83,7 @@ func (p *IncrementalWorkerPicker) findAvailable() int {
 	return -1
 }
 
-func (p *IncrementalWorkerPicker) pickInternal() (*ClientWorker, error, bool) {
+func (p *IncrementalWorkerPicker) pickInternal() (*ClientWorker, bool, error) {
 	p.access.Lock()
 	defer p.access.Unlock()
 
@@ -93,14 +93,14 @@ func (p *IncrementalWorkerPicker) pickInternal() (*ClientWorker, error, bool) {
 		if n > 1 && idx != n-1 {
 			p.workers[n-1], p.workers[idx] = p.workers[idx], p.workers[n-1]
 		}
-		return p.workers[idx], nil, false
+		return p.workers[idx], false, nil
 	}
 
 	p.cleanup()
 
 	worker, err := p.Factory.Create()
 	if err != nil {
-		return nil, err, false
+		return nil, false, err
 	}
 	p.workers = append(p.workers, worker)
 
@@ -111,11 +111,11 @@ func (p *IncrementalWorkerPicker) pickInternal() (*ClientWorker, error, bool) {
 		}
 	}
 
-	return worker, nil, true
+	return worker, true, nil
 }
 
 func (p *IncrementalWorkerPicker) PickAvailable() (*ClientWorker, error) {
-	worker, err, start := p.pickInternal()
+	worker, start, err := p.pickInternal()
 	if start {
 		common.Must(p.cleanupTask.Start())
 	}
@@ -131,6 +131,17 @@ type DialingWorkerFactory struct {
 	Proxy    proxy.Outbound
 	Dialer   internet.Dialer
 	Strategy ClientStrategy
+
+	ctx context.Context
+}
+
+func NewDialingWorkerFactory(ctx context.Context, proxy proxy.Outbound, dialer internet.Dialer, strategy ClientStrategy) *DialingWorkerFactory {
+	return &DialingWorkerFactory{
+		Proxy:    proxy,
+		Dialer:   dialer,
+		Strategy: strategy,
+		ctx:      ctx,
+	}
 }
 
 func (f *DialingWorkerFactory) Create() (*ClientWorker, error) {
@@ -142,13 +153,12 @@ func (f *DialingWorkerFactory) Create() (*ClientWorker, error) {
 		Reader: downlinkReader,
 		Writer: upLinkWriter,
 	}, f.Strategy)
-
 	if err != nil {
 		return nil, err
 	}
 
 	go func(p proxy.Outbound, d internet.Dialer, c common.Closable) {
-		ctx := session.ContextWithOutbound(context.Background(), &session.Outbound{
+		ctx := session.ContextWithOutbound(f.ctx, &session.Outbound{
 			Target: net.TCPDestination(muxCoolAddress, muxCoolPort),
 		})
 		ctx, cancel := context.WithCancel(ctx)
@@ -175,8 +185,10 @@ type ClientWorker struct {
 	strategy       ClientStrategy
 }
 
-var muxCoolAddress = net.DomainAddress("v1.mux.cool")
-var muxCoolPort = net.Port(9527)
+var (
+	muxCoolAddress = net.DomainAddress("v1.mux.cool")
+	muxCoolPort    = net.Port(9527)
+)
 
 // NewClientWorker creates a new mux.Client.
 func NewClientWorker(stream transport.Link, s ClientStrategy) (*ClientWorker, error) {
@@ -214,8 +226,8 @@ func (m *ClientWorker) monitor() {
 		select {
 		case <-m.done.Wait():
 			m.sessionManager.Close()
-			common.Close(m.link.Writer)     // nolint: errcheck
-			common.Interrupt(m.link.Reader) // nolint: errcheck
+			common.Close(m.link.Writer)
+			common.Interrupt(m.link.Reader)
 			return
 		case <-timer.C:
 			size := m.sessionManager.Size()
@@ -247,8 +259,8 @@ func fetchInput(ctx context.Context, s *Session, output buf.Writer) {
 	}
 	s.transferType = transferType
 	writer := NewWriter(s.ID, dest, output, transferType)
-	defer s.Close()      // nolint: errcheck
-	defer writer.Close() // nolint: errcheck
+	defer s.Close()
+	defer writer.Close()
 
 	newError("dispatching request to ", dest).WriteToLog(session.ExportIDToError(ctx))
 	if err := writeFirstPayload(s.input, writer); err != nil {

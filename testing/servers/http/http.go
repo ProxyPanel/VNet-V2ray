@@ -3,13 +3,12 @@ package tcp
 import (
 	"net/http"
 
-	"v2ray.com/core/common/net"
+	"github.com/v2fly/v2ray-core/v4/common/net"
 )
 
 type Server struct {
 	Port        net.Port
 	PathHandler map[string]http.HandlerFunc
-	accepting   bool
 	server      *http.Server
 }
 
@@ -33,7 +32,7 @@ func (s *Server) Start() (net.Destination, error) {
 		Handler: s,
 	}
 	go s.server.ListenAndServe()
-	return net.TCPDestination(net.LocalHostIP, net.Port(s.Port)), nil
+	return net.TCPDestination(net.LocalHostIP, s.Port), nil
 }
 
 func (s *Server) Close() error {

@@ -1,0 +1,7 @@
+{
+  "url": "",
+  "key": "",
+  "id": 0,
+  "error_log_path": "/var/log/vnet-v2ray/error.log",
+  "access_log_path": "/var/log/vnet-v2ray/access.log"
+}

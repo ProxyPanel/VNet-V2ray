@@ -4,18 +4,20 @@ package dns
 
 import (
 	"encoding/binary"
+	"strings"
 	"time"
 
 	"golang.org/x/net/dns/dnsmessage"
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/errors"
-	"v2ray.com/core/common/net"
-	dns_feature "v2ray.com/core/features/dns"
+
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/errors"
+	"github.com/v2fly/v2ray-core/v4/common/net"
+	dns_feature "github.com/v2fly/v2ray-core/v4/features/dns"
 )
 
 // Fqdn normalize domain make sure it ends with '.'
 func Fqdn(domain string) string {
-	if len(domain) > 0 && domain[len(domain)-1] == '.' {
+	if len(domain) > 0 && strings.HasSuffix(domain, ".") {
 		return domain
 	}
 	return domain + "."
@@ -54,9 +56,7 @@ func isNewer(baseRec *IPRecord, newRec *IPRecord) bool {
 	return baseRec.Expire.Before(newRec.Expire)
 }
 
-var (
-	errRecordNotFound = errors.New("record not found")
-)
+var errRecordNotFound = errors.New("record not found")
 
 type dnsRequest struct {
 	reqType dnsmessage.Type
@@ -114,7 +114,7 @@ func genEDNS0Options(clientIP net.IP) *dnsmessage.Resource {
 	return opt
 }
 
-func buildReqMsgs(domain string, option IPOption, reqIDGen func() uint16, reqOpts *dnsmessage.Resource) []*dnsRequest {
+func buildReqMsgs(domain string, option dns_feature.IPOption, reqIDGen func() uint16, reqOpts *dnsmessage.Resource) []*dnsRequest {
 	qA := dnsmessage.Question{
 		Name:  dnsmessage.MustNewName(domain),
 		Type:  dnsmessage.TypeA,

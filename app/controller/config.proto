@@ -2,11 +2,9 @@ syntax = "proto3";
 
 package v2ray.core.app.controller;
 option csharp_namespace = "V2Ray.Core.App.Controller";
-option go_package = "controller";
+option go_package = "github.com/v2fly/v2ray-core/v4/controller";
 option java_package = "com.v2ray.core.app.controller";
 option java_multiple_files = true;
-
-//import "v2ray.com/core/common/serial/typed_message.proto";
 
 message Config {
     string api_server = 1;

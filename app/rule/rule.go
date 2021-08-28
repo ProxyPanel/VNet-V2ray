@@ -3,16 +3,17 @@ package rule
 import (
 	"context"
 	"fmt"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/api"
+	"github.com/v2fly/v2ray-core/v4/common/log"
+	"github.com/v2fly/v2ray-core/v4/common/net"
+	"github.com/v2fly/v2ray-core/v4/common/protocol"
+	"github.com/v2fly/v2ray-core/v4/common/retry"
+	"github.com/v2fly/v2ray-core/v4/common/session"
 	"regexp"
 	"strconv"
 	"strings"
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/api"
-	"v2ray.com/core/common/log"
-	"v2ray.com/core/common/net"
-	"v2ray.com/core/common/protocol"
-	"v2ray.com/core/common/retry"
-	"v2ray.com/core/common/session"
+	"time"
 )
 
 func Type() interface{} {
@@ -23,12 +24,18 @@ type RuleManager struct {
 	context.Context
 	*api.ApiClient
 	*api.NodeRule
+	IllegalChan      chan *api.IllegalReport
+	IllegalArray     []*api.IllegalReport
+	workerCtx        context.Context
+	workerCancelFunc context.CancelFunc
 }
 
 func NewRuleManager(ctx context.Context, config *Config) (*RuleManager, error) {
 	r := new(RuleManager)
 	r.Context = ctx
 	r.ApiClient = api.NewClient(config.GetApiServer(), int(config.GetNodeId()), config.GetKey())
+	r.IllegalChan = make(chan *api.IllegalReport, 128)
+	r.IllegalArray = make([]*api.IllegalReport, 0, 256)
 	return r, nil
 }
 
@@ -61,7 +68,8 @@ func (r *RuleManager) Start() error {
 	var err error
 	var nodeRule *api.NodeRule
 	err = retry.ExponentialBackoff(3, 200).On(func() error {
-		nodeRule, err = r.ApiClient.GetNodeRule()
+		nodeInfo, err := r.ApiClient.GetNodeInfo()
+		nodeRule = &nodeInfo.Audit
 		return err
 	})
 	if err != nil {
@@ -72,13 +80,19 @@ func (r *RuleManager) Start() error {
 		Severity: log.Severity_Info,
 		Content:  fmt.Sprintf("load rule count: %d", len(nodeRule.Rules)),
 	})
+	r.workerCtx, r.workerCancelFunc = context.WithCancel(r.Context)
+	go r.worker()
 	return nil
 }
 
 func (r *RuleManager) Close() error {
+	if r.workerCancelFunc != nil {
+		r.workerCancelFunc()
+	}
 	return nil
 }
 
+// reject check the request is reject
 func (r *RuleManager) reject(ctx context.Context, destination net.Destination) bool {
 	result := true
 	ruleId := 0
@@ -132,18 +146,21 @@ func (r *RuleManager) reject(ctx context.Context, destination net.Destination) b
 			Reason: fmt.Sprintf("违反reject规则: %s", destination.String()),
 		}
 
-		err = retry.ExponentialBackoff(2, 200).On(func() error {
-			return r.ApiClient.ReportIllegal(illegalReport)
-		})
-		if err != nil {
-			newError("report illegal failed").Base(err).AtError().WriteToLog()
-			return result
-		}
+		r.IllegalChan <- illegalReport
+		//
+		//err = retry.ExponentialBackoff(2, 200).On(func() error {
+		//	return r.ApiClient.ReportIllegal(illegalReport)
+		//})
+		//if err != nil {
+		//	newError("report illegal failed").Base(err).AtError().WriteToLog()
+		//	return result
+		//}
 	}
 
 	return result
 }
 
+// allow check the request is allow
 func (r *RuleManager) allow(ctx context.Context, destination net.Destination) bool {
 	result := false
 
@@ -171,6 +188,41 @@ func (r *RuleManager) allow(ctx context.Context, destination net.Destination) bo
 	}
 
 	return result
+}
+
+// worker batch illegal report process
+func (r *RuleManager) worker() {
+	for {
+		select {
+		case item := <-r.IllegalChan:
+			r.IllegalArray = append(r.IllegalArray, item)
+			// overflow report
+			if len(r.IllegalArray) == 256 {
+				tmpIllegalArray := r.IllegalArray
+				r.IllegalArray = make([]*api.IllegalReport, 0, 256)
+				go func() {
+					err := r.ApiClient.ReportIllegal(tmpIllegalArray)
+					if err != nil {
+						newError("report illegal error").Base(err).AtError().WriteToLog()
+					}
+				}()
+			}
+		case <-time.After(3 * time.Second):
+			// timeout report
+			if len(r.IllegalArray) > 0 {
+				tmpIllegalArray := r.IllegalArray
+				r.IllegalArray = make([]*api.IllegalReport, 0, 256)
+				go func() {
+					err := r.ApiClient.ReportIllegal(tmpIllegalArray)
+					if err != nil {
+						newError("report illegal error").Base(err).AtError().WriteToLog()
+					}
+				}()
+			}
+		case <-r.workerCtx.Done():
+			break
+		}
+	}
 }
 
 func init() {

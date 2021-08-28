@@ -6,11 +6,12 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	"v2ray.com/core/common/protocol"
-	"v2ray.com/core/common/serial"
-	"v2ray.com/core/proxy/vmess"
-	"v2ray.com/core/proxy/vmess/inbound"
-	"v2ray.com/core/proxy/vmess/outbound"
+	"github.com/v2fly/v2ray-core/v4/common/protocol"
+	"github.com/v2fly/v2ray-core/v4/common/serial"
+	"github.com/v2fly/v2ray-core/v4/infra/conf/cfgcommon"
+	"github.com/v2fly/v2ray-core/v4/proxy/vmess"
+	"github.com/v2fly/v2ray-core/v4/proxy/vmess/inbound"
+	"github.com/v2fly/v2ray-core/v4/proxy/vmess/outbound"
 )
 
 type VMessAccount struct {
@@ -32,6 +33,8 @@ func (a *VMessAccount) Build() *vmess.Account {
 		st = protocol.SecurityType_AUTO
 	case "none":
 		st = protocol.SecurityType_NONE
+	case "zero":
+		st = protocol.SecurityType_ZERO
 	default:
 		st = protocol.SecurityType_AUTO
 	}
@@ -119,15 +122,14 @@ func (c *VMessInboundConfig) Build() (proto.Message, error) {
 }
 
 type VMessOutboundTarget struct {
-	Address *Address          `json:"address"`
-	Port    uint16            `json:"port"`
-	Users   []json.RawMessage `json:"users"`
+	Address *cfgcommon.Address `json:"address"`
+	Port    uint16             `json:"port"`
+	Users   []json.RawMessage  `json:"users"`
 }
+
 type VMessOutboundConfig struct {
 	Receivers []*VMessOutboundTarget `json:"vnext"`
 }
-
-var bUser = "a06fe789-5ab1-480b-8124-ae4599801ff3"
 
 // Build implements Buildable
 func (c *VMessOutboundConfig) Build() (proto.Message, error) {

@@ -1,18 +1,17 @@
 // +build !confonly
 
 // Package blackhole is an outbound handler that blocks all connections.
-
 package blackhole
 
-//go:generate errorgen
+//go:generate go run github.com/v2fly/v2ray-core/v4/common/errors/errorgen
 
 import (
 	"context"
 	"time"
 
-	"v2ray.com/core/common"
-	"v2ray.com/core/transport"
-	"v2ray.com/core/transport/internet"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/transport"
+	"github.com/v2fly/v2ray-core/v4/transport/internet"
 )
 
 // Handler is an outbound connection that silently swallow the entire payload.

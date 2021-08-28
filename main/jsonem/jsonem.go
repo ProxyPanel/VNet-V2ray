@@ -3,12 +3,12 @@ package jsonem
 import (
 	"io"
 
-	"v2ray.com/core"
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/cmdarg"
-	"v2ray.com/core/infra/conf"
-	"v2ray.com/core/infra/conf/serial"
-	"v2ray.com/core/main/confloader"
+	core "github.com/v2fly/v2ray-core/v4"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/cmdarg"
+	"github.com/v2fly/v2ray-core/v4/infra/conf"
+	"github.com/v2fly/v2ray-core/v4/infra/conf/serial"
+	"github.com/v2fly/v2ray-core/v4/main/confloader"
 )
 
 func init() {
@@ -19,12 +19,18 @@ func init() {
 			switch v := input.(type) {
 			case cmdarg.Arg:
 				cf := &conf.Config{}
-				for _, arg := range v {
+				for i, arg := range v {
 					newError("Reading config: ", arg).AtInfo().WriteToLog()
 					r, err := confloader.LoadConfig(arg)
 					common.Must(err)
 					c, err := serial.DecodeJSONConfig(r)
 					common.Must(err)
+					if i == 0 {
+						// This ensure even if the muti-json parser do not support a setting,
+						// It is still respected automatically for the first configure file
+						*cf = *c
+						continue
+					}
 					cf.Override(c, arg)
 				}
 				return cf.Build()

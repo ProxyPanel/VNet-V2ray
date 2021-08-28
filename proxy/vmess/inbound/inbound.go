@@ -2,39 +2,43 @@
 
 package inbound
 
-//go:generate errorgen
+//go:generate go run github.com/v2fly/v2ray-core/v4/common/errors/errorgen
 
 import (
 	"context"
 	"crypto/tls"
+	"github.com/v2fly/v2ray-core/v4/features/history"
 	"io"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 	"unsafe"
-	"v2ray.com/core"
-	"v2ray.com/core/app/rule"
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/api"
-	"v2ray.com/core/common/buf"
-	"v2ray.com/core/common/errors"
-	"v2ray.com/core/common/httpx"
-	"v2ray.com/core/common/log"
-	"v2ray.com/core/common/net"
-	"v2ray.com/core/common/protocol"
-	"v2ray.com/core/common/session"
-	"v2ray.com/core/common/signal"
-	"v2ray.com/core/common/task"
-	"v2ray.com/core/common/tlsx"
-	"v2ray.com/core/common/uuid"
-	controllerInterface "v2ray.com/core/features/controller"
-	feature_inbound "v2ray.com/core/features/inbound"
-	"v2ray.com/core/features/policy"
-	"v2ray.com/core/features/routing"
-	"v2ray.com/core/proxy/vmess"
-	"v2ray.com/core/proxy/vmess/encoding"
-	"v2ray.com/core/transport"
-	"v2ray.com/core/transport/internet"
+
+	core "github.com/v2fly/v2ray-core/v4"
+	"github.com/v2fly/v2ray-core/v4/app/rule"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/api"
+	"github.com/v2fly/v2ray-core/v4/common/buf"
+	"github.com/v2fly/v2ray-core/v4/common/errors"
+	"github.com/v2fly/v2ray-core/v4/common/httpx"
+	"github.com/v2fly/v2ray-core/v4/common/log"
+	"github.com/v2fly/v2ray-core/v4/common/net"
+	"github.com/v2fly/v2ray-core/v4/common/platform"
+	"github.com/v2fly/v2ray-core/v4/common/protocol"
+	"github.com/v2fly/v2ray-core/v4/common/session"
+	"github.com/v2fly/v2ray-core/v4/common/signal"
+	"github.com/v2fly/v2ray-core/v4/common/task"
+	"github.com/v2fly/v2ray-core/v4/common/tlsx"
+	"github.com/v2fly/v2ray-core/v4/common/uuid"
+	controllerInterface "github.com/v2fly/v2ray-core/v4/features/controller"
+	feature_inbound "github.com/v2fly/v2ray-core/v4/features/inbound"
+	"github.com/v2fly/v2ray-core/v4/features/policy"
+	"github.com/v2fly/v2ray-core/v4/features/routing"
+	"github.com/v2fly/v2ray-core/v4/proxy/vmess"
+	"github.com/v2fly/v2ray-core/v4/proxy/vmess/encoding"
+	"github.com/v2fly/v2ray-core/v4/transport"
+	"github.com/v2fly/v2ray-core/v4/transport/internet"
 )
 
 type userByEmail struct {
@@ -170,6 +174,7 @@ type Handler struct {
 	userLinks             map[string][]*transport.Link
 	ruleManager           *rule.RuleManager
 	controller            controllerInterface.Controller
+	history               history.History
 }
 
 // New creates a new VMess inbound handler.
@@ -187,6 +192,7 @@ func New(ctx context.Context, config *Config) (*Handler, error) {
 		userLinks:             make(map[string][]*transport.Link),
 		ruleManager:           core.MustFromContext(ctx).GetFeature(rule.Type()).(*rule.RuleManager),
 		controller:            core.MustFromContext(ctx).GetFeature(controllerInterface.Type()).(controllerInterface.Controller),
+		history:               core.MustFromContext(ctx).GetFeature(history.Type()).(history.History),
 	}
 
 	for _, user := range config.User {
@@ -213,8 +219,9 @@ func (h *Handler) Close() error {
 
 // Network implements proxy.Inbound.Network().
 func (*Handler) Network() []net.Network {
-	return []net.Network{net.Network_TCP}
+	return []net.Network{net.Network_TCP, net.Network_UNIX}
 }
+
 func (h *Handler) GetUser(email string) *protocol.MemoryUser {
 	user, existing := h.usersByEmail.Get(email)
 	if !existing {
@@ -324,6 +331,7 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection i
 	bufferedReader := &buf.BufferedReader{Reader: limitReader}
 
 	svrSession := encoding.NewServerSession(h.clients, h.sessionHistory)
+	svrSession.SetAEADForced(aeadForced)
 	request, err := svrSession.DecodeRequestHeader(bufferedReader)
 	if err != nil {
 		if errors.Cause(err) != io.EOF {
@@ -336,6 +344,18 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection i
 			err = newError("invalid request from ", connection.RemoteAddr()).Base(err).AtInfo()
 		}
 		return err
+	}
+
+	uid, err := strconv.Atoi(request.User.Email)
+	if err == nil {
+		if h.history != nil {
+			h.history.Record(ctx, &api.History{
+				UID: uid,
+				URL: request.Address.String(),
+			})
+		}
+	} else {
+		newError("uid convert error").Base(err).AtError().WriteToLog()
 	}
 
 	limiter := h.usersByEmail.GetLimiter(request.User.Email)
@@ -468,10 +488,10 @@ func (h *Handler) doRedirect(ctx context.Context, request *protocol.RequestHeade
 	if request.Port == 80 {
 		var tmpMBuf buf.MultiBuffer
 		// if node info contain redirect url then return http status with 302 otherwise return 403 with default content
-		if nodeInfo.RedirectUrl == "" {
+		if nodeInfo.Redirect == "" {
 			tmpMBuf = buf.MultiBufferFromBytes([]byte(httpx.Http403("该网站被阻止访问，如需访问请联系管理员。\r\n")))
 		} else {
-			tmpMBuf = buf.MultiBufferFromBytes([]byte(httpx.Http302(nodeInfo.RedirectUrl)))
+			tmpMBuf = buf.MultiBufferFromBytes([]byte(httpx.Http302(nodeInfo.Redirect)))
 		}
 		bufferedWriter.WriteMultiBuffer(tmpMBuf)
 		return
@@ -503,11 +523,11 @@ func (h *Handler) doRedirect(ctx context.Context, request *protocol.RequestHeade
 		}
 		tlsConn := tls.Server(fakeConn, config)
 		// if node info contain redirect url then return http status with 302 otherwise return 403 with default content
-		if nodeInfo.RedirectUrl == "" {
+		if nodeInfo.Redirect == "" {
 			_, err = tlsConn.Write([]byte(httpx.Http403("该网站被阻止访问，如需访问请联系管理员。\r\n")))
 
 		} else {
-			_, err = tlsConn.Write([]byte(httpx.Http302(nodeInfo.RedirectUrl)))
+			_, err = tlsConn.Write([]byte(httpx.Http302(nodeInfo.Redirect)))
 		}
 
 		if err != nil {
@@ -602,8 +622,29 @@ func (f FakeConnection) Write(b []byte) (n int, err error) {
 	return f.Writer.Write(b)
 }
 
+var (
+	aeadForced     = false
+	aeadForced2022 = false
+)
+
 func init() {
 	common.Must(common.RegisterConfig((*Config)(nil), func(ctx context.Context, config interface{}) (interface{}, error) {
 		return New(ctx, config.(*Config))
 	}))
+
+	defaultFlagValue := "NOT_DEFINED_AT_ALL"
+
+	if time.Now().Year() >= 2022 {
+		defaultFlagValue = "true_by_default_2022"
+	}
+
+	isAeadForced := platform.NewEnvFlag("v2ray.vmess.aead.forced").GetValue(func() string { return defaultFlagValue })
+	if isAeadForced == "true" {
+		aeadForced = true
+	}
+
+	if isAeadForced == "true_by_default_2022" {
+		aeadForced = true
+		aeadForced2022 = true
+	}
 }

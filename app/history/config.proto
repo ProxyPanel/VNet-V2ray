@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package v2ray.core.app.history;
+option csharp_namespace = "V2Ray.Core.App.History";
+option go_package = "github.com/v2fly/v2ray-core/v4/app/history";
+option java_package = "com.v2ray.core.app.history";
+option java_multiple_files = true;
+
+message Config {
+  string api_server = 1;
+  string key = 2;
+  int32 node_id = 3;
+}

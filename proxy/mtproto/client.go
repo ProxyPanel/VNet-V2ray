@@ -3,18 +3,17 @@ package mtproto
 import (
 	"context"
 
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/buf"
-	"v2ray.com/core/common/crypto"
-	"v2ray.com/core/common/net"
-	"v2ray.com/core/common/session"
-	"v2ray.com/core/common/task"
-	"v2ray.com/core/transport"
-	"v2ray.com/core/transport/internet"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/buf"
+	"github.com/v2fly/v2ray-core/v4/common/crypto"
+	"github.com/v2fly/v2ray-core/v4/common/net"
+	"github.com/v2fly/v2ray-core/v4/common/session"
+	"github.com/v2fly/v2ray-core/v4/common/task"
+	"github.com/v2fly/v2ray-core/v4/transport"
+	"github.com/v2fly/v2ray-core/v4/transport/internet"
 )
 
-type Client struct {
-}
+type Client struct{}
 
 func NewClient(ctx context.Context, config *ClientConfig) (*Client, error) {
 	return &Client{}, nil
@@ -34,7 +33,7 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 	if err != nil {
 		return newError("failed to dial to ", dest).Base(err).AtWarning()
 	}
-	defer conn.Close() // nolint: errcheck
+	defer conn.Close()
 
 	sc := SessionContextFromContext(ctx)
 	auth := NewAuthentication(sc)
@@ -62,7 +61,7 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 		return buf.Copy(connReader, link.Writer)
 	}
 
-	var responseDoneAndCloseWriter = task.OnSuccess(response, task.Close(link.Writer))
+	responseDoneAndCloseWriter := task.OnSuccess(response, task.Close(link.Writer))
 	if err := task.Run(ctx, request, responseDoneAndCloseWriter); err != nil {
 		return newError("connection ends").Base(err)
 	}

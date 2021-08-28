@@ -2,25 +2,25 @@
 
 package freedom
 
-//go:generate errorgen
+//go:generate go run github.com/v2fly/v2ray-core/v4/common/errors/errorgen
 
 import (
 	"context"
 	"time"
 
-	"v2ray.com/core"
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/buf"
-	"v2ray.com/core/common/dice"
-	"v2ray.com/core/common/net"
-	"v2ray.com/core/common/retry"
-	"v2ray.com/core/common/session"
-	"v2ray.com/core/common/signal"
-	"v2ray.com/core/common/task"
-	"v2ray.com/core/features/dns"
-	"v2ray.com/core/features/policy"
-	"v2ray.com/core/transport"
-	"v2ray.com/core/transport/internet"
+	core "github.com/v2fly/v2ray-core/v4"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/buf"
+	"github.com/v2fly/v2ray-core/v4/common/dice"
+	"github.com/v2fly/v2ray-core/v4/common/net"
+	"github.com/v2fly/v2ray-core/v4/common/retry"
+	"github.com/v2fly/v2ray-core/v4/common/session"
+	"github.com/v2fly/v2ray-core/v4/common/signal"
+	"github.com/v2fly/v2ray-core/v4/common/task"
+	"github.com/v2fly/v2ray-core/v4/features/dns"
+	"github.com/v2fly/v2ray-core/v4/features/policy"
+	"github.com/v2fly/v2ray-core/v4/transport"
+	"github.com/v2fly/v2ray-core/v4/transport/internet"
 )
 
 func init() {
@@ -39,12 +39,12 @@ func init() {
 type Handler struct {
 	policyManager policy.Manager
 	dns           dns.Client
-	config        Config
+	config        *Config
 }
 
 // Init initializes the Handler with necessary parameters.
 func (h *Handler) Init(config *Config, pm policy.Manager, d dns.Client) error {
-	h.config = *config
+	h.config = config
 	h.policyManager = pm
 	h.dns = d
 
@@ -60,8 +60,13 @@ func (h *Handler) policy() policy.Session {
 }
 
 func (h *Handler) resolveIP(ctx context.Context, domain string, localAddr net.Address) net.Address {
-	var lookupFunc func(string) ([]net.IP, error) = h.dns.LookupIP
+	if c, ok := h.dns.(dns.ClientWithIPOption); ok {
+		c.SetFakeDNSOption(false) // Skip FakeDNS
+	} else {
+		newError("DNS client doesn't implement ClientWithIPOption")
+	}
 
+	var lookupFunc func(string) ([]net.IP, error) = h.dns.LookupIP
 	if h.config.DomainStrategy == Config_USE_IP4 || (localAddr != nil && localAddr.Family().IsIPv4()) {
 		if lookupIPv4, ok := h.dns.(dns.IPv4Lookup); ok {
 			lookupFunc = lookupIPv4.LookupIPv4
@@ -123,7 +128,7 @@ func (h *Handler) Process(ctx context.Context, link *transport.Link, dialer inte
 					Address: ip,
 					Port:    dialDest.Port,
 				}
-				newError("dialing to to ", dialDest).WriteToLog(session.ExportIDToError(ctx))
+				newError("dialing to ", dialDest).WriteToLog(session.ExportIDToError(ctx))
 			}
 		}
 
@@ -137,13 +142,11 @@ func (h *Handler) Process(ctx context.Context, link *transport.Link, dialer inte
 	if err != nil {
 		return newError("failed to open connection to ", destination).Base(err)
 	}
-	defer conn.Close() // nolint: errcheck
+	defer conn.Close()
 
 	plcy := h.policy()
 	ctx, cancel := context.WithCancel(ctx)
 	timer := signal.CancelAfterInactivity(ctx, cancel, plcy.Timeouts.ConnectionIdle)
-
-	//limter := session.ProxyLimiterFromContext(ctx)
 
 	requestDone := func() error {
 		defer timer.SetTimeout(plcy.Timeouts.DownlinkOnly)
@@ -154,14 +157,6 @@ func (h *Handler) Process(ctx context.Context, link *transport.Link, dialer inte
 		} else {
 			writer = &buf.SequentialWriter{Writer: conn}
 		}
-
-		//if limter != nil {
-		//	writer = &buf.LimitWriter{
-		//		Context: ctx,
-		//		Limiter: limter.Dest.UpLimiter,
-		//		Writer:  writer,
-		//	}
-		//}
 
 		if err := buf.Copy(input, writer, buf.UpdateActivity(timer)); err != nil {
 			return newError("failed to process request").Base(err)
@@ -179,15 +174,6 @@ func (h *Handler) Process(ctx context.Context, link *transport.Link, dialer inte
 		} else {
 			reader = buf.NewPacketReader(conn)
 		}
-
-		//if limter != nil {
-		//	reader = &buf.LimitReader{
-		//		Context: ctx,
-		//		Limiter: limter.Dest.DownLimter,
-		//		Reader:  reader,
-		//	}
-		//}
-
 		if err := buf.Copy(reader, output, buf.UpdateActivity(timer)); err != nil {
 			return newError("failed to process response").Base(err)
 		}

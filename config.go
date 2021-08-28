@@ -6,11 +6,12 @@ import (
 	"io"
 	"strings"
 
-	"github.com/golang/protobuf/proto"
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/buf"
-	"v2ray.com/core/common/cmdarg"
-	"v2ray.com/core/main/confloader"
+	"google.golang.org/protobuf/proto"
+
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/buf"
+	"github.com/v2fly/v2ray-core/v4/common/cmdarg"
+	"github.com/v2fly/v2ray-core/v4/main/confloader"
 )
 
 // ConfigFormat is a configurable format of V2Ray config file.

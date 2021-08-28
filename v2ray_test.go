@@ -3,22 +3,23 @@ package core_test
 import (
 	"testing"
 
-	proto "github.com/golang/protobuf/proto"
-	. "v2ray.com/core"
-	"v2ray.com/core/app/dispatcher"
-	"v2ray.com/core/app/proxyman"
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/net"
-	"v2ray.com/core/common/protocol"
-	"v2ray.com/core/common/serial"
-	"v2ray.com/core/common/uuid"
-	"v2ray.com/core/features/dns"
-	"v2ray.com/core/features/dns/localdns"
-	_ "v2ray.com/core/main/distro/all"
-	"v2ray.com/core/proxy/dokodemo"
-	"v2ray.com/core/proxy/vmess"
-	"v2ray.com/core/proxy/vmess/outbound"
-	"v2ray.com/core/testing/servers/tcp"
+	"github.com/golang/protobuf/proto"
+
+	. "github.com/v2fly/v2ray-core/v4"
+	"github.com/v2fly/v2ray-core/v4/app/dispatcher"
+	"github.com/v2fly/v2ray-core/v4/app/proxyman"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/net"
+	"github.com/v2fly/v2ray-core/v4/common/protocol"
+	"github.com/v2fly/v2ray-core/v4/common/serial"
+	"github.com/v2fly/v2ray-core/v4/common/uuid"
+	"github.com/v2fly/v2ray-core/v4/features/dns"
+	"github.com/v2fly/v2ray-core/v4/features/dns/localdns"
+	_ "github.com/v2fly/v2ray-core/v4/main/distro/all"
+	"github.com/v2fly/v2ray-core/v4/proxy/dokodemo"
+	"github.com/v2fly/v2ray-core/v4/proxy/vmess"
+	"github.com/v2fly/v2ray-core/v4/proxy/vmess/outbound"
+	"github.com/v2fly/v2ray-core/v4/testing/servers/tcp"
 )
 
 func TestV2RayDependency(t *testing.T) {
@@ -38,7 +39,7 @@ func TestV2RayDependency(t *testing.T) {
 func TestV2RayClose(t *testing.T) {
 	port := tcp.PickPort()
 
-	userId := uuid.New()
+	userID := uuid.New()
 	config := &Config{
 		App: []*serial.TypedMessage{
 			serial.ToTypedMessage(&dispatcher.Config{}),
@@ -70,7 +71,7 @@ func TestV2RayClose(t *testing.T) {
 							User: []*protocol.User{
 								{
 									Account: serial.ToTypedMessage(&vmess.Account{
-										Id: userId.String(),
+										Id: userID.String(),
 									}),
 								},
 							},

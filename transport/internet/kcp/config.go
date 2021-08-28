@@ -5,8 +5,8 @@ package kcp
 import (
 	"crypto/cipher"
 
-	"v2ray.com/core/common"
-	"v2ray.com/core/transport/internet"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/transport/internet"
 )
 
 const protocolName = "mkcp"
@@ -60,7 +60,10 @@ func (c *Config) GetReadBufferSize() uint32 {
 }
 
 // GetSecurity returns the security settings.
-func (*Config) GetSecurity() (cipher.AEAD, error) {
+func (c *Config) GetSecurity() (cipher.AEAD, error) {
+	if c.Seed != nil {
+		return NewAEADAESGCMBasedOnSeed(c.Seed.Seed), nil
+	}
 	return NewSimpleAuthenticator(), nil
 }
 

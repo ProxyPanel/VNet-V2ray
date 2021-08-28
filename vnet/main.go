@@ -4,26 +4,28 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/v2fly/v2ray-core/v4/app/history"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"runtime"
 	"syscall"
-	"v2ray.com/core"
-	"v2ray.com/core/app/controller"
-	"v2ray.com/core/app/dispatcher"
-	"v2ray.com/core/app/log"
-	"v2ray.com/core/app/online"
-	"v2ray.com/core/app/policy"
-	"v2ray.com/core/app/proxyman"
-	"v2ray.com/core/app/rule"
-	"v2ray.com/core/app/stats"
-	"v2ray.com/core/app/status"
-	"v2ray.com/core/app/traffic"
-	"v2ray.com/core/common/buf"
-	clog "v2ray.com/core/common/log"
-	"v2ray.com/core/common/serial"
-	_ "v2ray.com/core/main/distro/all"
+
+	core "github.com/v2fly/v2ray-core/v4"
+	"github.com/v2fly/v2ray-core/v4/app/controller"
+	"github.com/v2fly/v2ray-core/v4/app/dispatcher"
+	"github.com/v2fly/v2ray-core/v4/app/log"
+	"github.com/v2fly/v2ray-core/v4/app/online"
+	"github.com/v2fly/v2ray-core/v4/app/policy"
+	"github.com/v2fly/v2ray-core/v4/app/proxyman"
+	"github.com/v2fly/v2ray-core/v4/app/rule"
+	"github.com/v2fly/v2ray-core/v4/app/stats"
+	"github.com/v2fly/v2ray-core/v4/app/status"
+	"github.com/v2fly/v2ray-core/v4/app/traffic"
+	"github.com/v2fly/v2ray-core/v4/common/buf"
+	clog "github.com/v2fly/v2ray-core/v4/common/log"
+	"github.com/v2fly/v2ray-core/v4/common/serial"
+	_ "github.com/v2fly/v2ray-core/v4/main/distro/all"
 )
 
 var (
@@ -32,9 +34,11 @@ var (
 )
 
 type Config struct {
-	ApiServer string `json:"api_server"`
-	Key       string `json:"key"`
-	NodeId    int32  `json:"node_id"`
+	URL           string `json:"url"`
+	Key           string `json:"key"`
+	ID            int32  `json:"id"`
+	AccessLogPath string `json:"access_log_path"`
+	ErrorLogPath  string `json:"error_log_path"`
 }
 
 func main() {
@@ -96,6 +100,7 @@ func getConfigFilePath() string {
 	if workingDir, err := os.Getwd(); err == nil {
 		configFile := filepath.Join(workingDir, "config.json")
 		if fileExists(configFile) {
+			fmt.Println("Using default config: ", configFile)
 			return configFile
 		}
 	}
@@ -115,38 +120,38 @@ func startWithConfig(c *Config) {
 	config.App = append(config.App, serial.ToTypedMessage(&proxyman.OutboundConfig{}))
 	config.App = append(config.App, serial.ToTypedMessage(&stats.Config{}))
 	config.App = append(config.App, serial.ToTypedMessage(&controller.Config{
-		ApiServer: c.ApiServer,
+		ApiServer: c.URL,
 		Key:       c.Key,
-		NodeId:    c.NodeId,
+		NodeId:    c.ID,
 	}))
 
 	config.App = append(config.App, serial.ToTypedMessage(&traffic.Config{
-		ApiServer: c.ApiServer,
+		ApiServer: c.URL,
 		Key:       c.Key,
-		NodeId:    c.NodeId,
+		NodeId:    c.ID,
 	}))
 
 	config.App = append(config.App, serial.ToTypedMessage(&status.Config{
-		ApiServer: c.ApiServer,
+		ApiServer: c.URL,
 		Key:       c.Key,
-		NodeId:    c.NodeId,
+		NodeId:    c.ID,
 	}))
 
 	config.App = append(config.App, serial.ToTypedMessage(&online.Config{
-		ApiServer: c.ApiServer,
+		ApiServer: c.URL,
 		Key:       c.Key,
-		NodeId:    c.NodeId,
+		NodeId:    c.ID,
 	}))
 
 	config.App = append(config.App, serial.ToTypedMessage(&rule.Config{
-		ApiServer: c.ApiServer,
+		ApiServer: c.URL,
 		Key:       c.Key,
-		NodeId:    c.NodeId,
+		NodeId:    c.ID,
 	}))
 
 	config.App = append(config.App, serial.ToTypedMessage(&policy.Config{
 		Level: map[uint32]*policy.Policy{
-			0: &policy.Policy{
+			0: {
 				//Buffer: &policy.Policy_Buffer{
 				//	Connection: 0,
 				//},
@@ -155,10 +160,19 @@ func startWithConfig(c *Config) {
 		},
 		System: nil,
 	}))
+
 	config.App = append(config.App, serial.ToTypedMessage(&log.Config{
 		ErrorLogType:  log.LogType_Console,
 		AccessLogType: log.LogType_Console,
+		AccessLogPath: c.AccessLogPath,
+		ErrorLogPath:  c.ErrorLogPath,
 		ErrorLogLevel: clog.Severity_Info,
+	}))
+
+	config.App = append(config.App, serial.ToTypedMessage(&history.Config{
+		ApiServer: c.URL,
+		Key:       c.Key,
+		NodeId:    c.ID,
 	}))
 
 	server, err := core.New(config)

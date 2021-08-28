@@ -5,8 +5,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	"v2ray.com/core/common/serial"
-	"v2ray.com/core/proxy/blackhole"
+	"github.com/v2fly/v2ray-core/v4/common/serial"
+	"github.com/v2fly/v2ray-core/v4/proxy/blackhole"
 )
 
 type NoneResponse struct{}
@@ -15,9 +15,9 @@ func (*NoneResponse) Build() (proto.Message, error) {
 	return new(blackhole.NoneResponse), nil
 }
 
-type HttpResponse struct{}
+type HTTPResponse struct{}
 
-func (*HttpResponse) Build() (proto.Message, error) {
+func (*HTTPResponse) Build() (proto.Message, error) {
 	return new(blackhole.HTTPResponse), nil
 }
 
@@ -42,12 +42,10 @@ func (v *BlackholeConfig) Build() (proto.Message, error) {
 	return config, nil
 }
 
-var (
-	configLoader = NewJSONConfigLoader(
-		ConfigCreatorCache{
-			"none": func() interface{} { return new(NoneResponse) },
-			"http": func() interface{} { return new(HttpResponse) },
-		},
-		"type",
-		"")
-)
+var configLoader = NewJSONConfigLoader(
+	ConfigCreatorCache{
+		"none": func() interface{} { return new(NoneResponse) },
+		"http": func() interface{} { return new(HTTPResponse) },
+	},
+	"type",
+	"")

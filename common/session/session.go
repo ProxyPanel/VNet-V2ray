@@ -1,13 +1,13 @@
 // Package session provides functions for sessions of incoming requests.
-package session // import "v2ray.com/core/common/session"
+package session
 
 import (
 	"context"
 	"math/rand"
 
-	"v2ray.com/core/common/errors"
-	"v2ray.com/core/common/net"
-	"v2ray.com/core/common/protocol"
+	"github.com/v2fly/v2ray-core/v4/common/errors"
+	"github.com/v2fly/v2ray-core/v4/common/net"
+	"github.com/v2fly/v2ray-core/v4/common/protocol"
 )
 
 // ID of a session.
@@ -37,7 +37,7 @@ func ExportIDToError(ctx context.Context) errors.ExportOption {
 type Inbound struct {
 	// Source address of the inbound connection.
 	Source net.Destination
-	// Getaway address
+	// Gateway address
 	Gateway net.Destination
 	// Tag of the inbound proxy that handles the connection.
 	Tag string
@@ -51,13 +51,13 @@ type Outbound struct {
 	Target net.Destination
 	// Gateway address
 	Gateway net.Address
-	// ResolvedIPs is the resolved IP addresses, if the Targe is a domain address.
-	ResolvedIPs []net.IP
 }
 
+// SniffingRequest controls the behavior of content sniffing.
 type SniffingRequest struct {
 	OverrideDestinationForProtocol []string
 	Enabled                        bool
+	MetadataOnly                   bool
 }
 
 // Content is the metadata of the connection content.
@@ -67,21 +67,29 @@ type Content struct {
 
 	SniffingRequest SniffingRequest
 
-	Attributes map[string]interface{}
+	Attributes map[string]string
 
-	SkipRoutePick bool
+	SkipDNSResolve bool
 }
 
-func (c *Content) SetAttribute(name string, value interface{}) {
+// Sockopt is the settings for socket connection.
+type Sockopt struct {
+	// Mark of the socket connection.
+	Mark int32
+}
+
+// SetAttribute attachs additional string attributes to content.
+func (c *Content) SetAttribute(name string, value string) {
 	if c.Attributes == nil {
-		c.Attributes = make(map[string]interface{})
+		c.Attributes = make(map[string]string)
 	}
 	c.Attributes[name] = value
 }
 
-func (c *Content) Attribute(name string) interface{} {
+// Attribute retrieves additional string attributes from content.
+func (c *Content) Attribute(name string) string {
 	if c.Attributes == nil {
-		return nil
+		return ""
 	}
 	return c.Attributes[name]
 }

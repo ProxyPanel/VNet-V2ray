@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/buf"
-	"v2ray.com/core/common/signal"
-	"v2ray.com/core/common/signal/done"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/buf"
+	"github.com/v2fly/v2ray-core/v4/common/signal"
+	"github.com/v2fly/v2ray-core/v4/common/signal/done"
 )
 
 type state byte
@@ -40,8 +40,10 @@ type pipe struct {
 	state       state
 }
 
-var errBufferFull = errors.New("buffer full")
-var errSlowDown = errors.New("slow down")
+var (
+	errBufferFull = errors.New("buffer full")
+	errSlowDown   = errors.New("slow down")
+)
 
 func (p *pipe) getState(forRead bool) error {
 	switch p.state {

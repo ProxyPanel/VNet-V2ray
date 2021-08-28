@@ -1,7 +1,7 @@
 package conf
 
 import (
-	"v2ray.com/core/app/policy"
+	"github.com/v2fly/v2ray-core/v4/app/policy"
 )
 
 type Policy struct {
@@ -51,15 +51,19 @@ func (t *Policy) Build() (*policy.Policy, error) {
 }
 
 type SystemPolicy struct {
-	StatsInboundUplink   bool `json:"statsInboundUplink"`
-	StatsInboundDownlink bool `json:"statsInboundDownlink"`
+	StatsInboundUplink    bool `json:"statsInboundUplink"`
+	StatsInboundDownlink  bool `json:"statsInboundDownlink"`
+	StatsOutboundUplink   bool `json:"statsOutboundUplink"`
+	StatsOutboundDownlink bool `json:"statsOutboundDownlink"`
 }
 
 func (p *SystemPolicy) Build() (*policy.SystemPolicy, error) {
 	return &policy.SystemPolicy{
 		Stats: &policy.SystemPolicy_Stats{
-			InboundUplink:   p.StatsInboundUplink,
-			InboundDownlink: p.StatsInboundDownlink,
+			InboundUplink:    p.StatsInboundUplink,
+			InboundDownlink:  p.StatsInboundDownlink,
+			OutboundUplink:   p.StatsOutboundUplink,
+			OutboundDownlink: p.StatsOutboundDownlink,
 		},
 	}, nil
 }

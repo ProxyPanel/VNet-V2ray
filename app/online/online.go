@@ -7,11 +7,12 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/api"
-	"v2ray.com/core/common/log"
-	"v2ray.com/core/common/retry"
-	"v2ray.com/core/common/task"
+
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/api"
+	"github.com/v2fly/v2ray-core/v4/common/log"
+	"github.com/v2fly/v2ray-core/v4/common/retry"
+	"github.com/v2fly/v2ray-core/v4/common/task"
 )
 
 type Online struct {
@@ -90,7 +91,7 @@ func (r *OnlineRepoter) Start() error {
 				nodeOnline.UID = uid
 				ipsArray := make([]string, 0)
 				item.IPLock.Lock()
-				for key, _ := range item.IPs {
+				for key := range item.IPs {
 					ipsArray = append(ipsArray, key)
 				}
 				item.IPLock.Unlock()

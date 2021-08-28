@@ -7,21 +7,22 @@ import (
 	net2 "net"
 	"strings"
 	"time"
-	"v2ray.com/core"
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/api"
-	"v2ray.com/core/common/buf"
-	"v2ray.com/core/common/errors"
-	"v2ray.com/core/common/httpx"
-	"v2ray.com/core/common/log"
-	"v2ray.com/core/common/net"
-	"v2ray.com/core/common/protocol"
-	"v2ray.com/core/common/session"
-	"v2ray.com/core/common/tlsx"
-	controllerInterface "v2ray.com/core/features/controller"
-	"v2ray.com/core/features/routing"
-	"v2ray.com/core/transport"
-	"v2ray.com/core/transport/pipe"
+
+	core "github.com/v2fly/v2ray-core/v4"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/api"
+	"github.com/v2fly/v2ray-core/v4/common/buf"
+	"github.com/v2fly/v2ray-core/v4/common/errors"
+	"github.com/v2fly/v2ray-core/v4/common/httpx"
+	"github.com/v2fly/v2ray-core/v4/common/log"
+	"github.com/v2fly/v2ray-core/v4/common/net"
+	"github.com/v2fly/v2ray-core/v4/common/protocol"
+	"github.com/v2fly/v2ray-core/v4/common/session"
+	"github.com/v2fly/v2ray-core/v4/common/tlsx"
+	controllerInterface "github.com/v2fly/v2ray-core/v4/features/controller"
+	"github.com/v2fly/v2ray-core/v4/features/routing"
+	"github.com/v2fly/v2ray-core/v4/transport"
+	"github.com/v2fly/v2ray-core/v4/transport/pipe"
 )
 
 type Server struct {
@@ -47,7 +48,7 @@ func (s *Server) Type() interface{} {
 	return s.dispatcher.Type()
 }
 
-// Dispatch impliments routing.Dispatcher
+// Dispatch implements routing.Dispatcher
 func (s *Server) Dispatch(ctx context.Context, dest net.Destination) (*transport.Link, error) {
 	if dest.Address != muxCoolAddress {
 		return s.dispatcher.Dispatch(ctx, dest)
@@ -327,10 +328,10 @@ func (w *ServerWorker) doRedirect(ctx context.Context, meta *FrameMetadata, rawR
 
 		if meta.Target.Port == 80 {
 			// if n	ode info contain redirect url then return http status with 302 otherwise return 403 with default content
-			if nodeInfo.RedirectUrl == "" {
+			if nodeInfo.Redirect == "" {
 				bufferedWriter.Write([]byte(httpx.Http403("该网站被阻止访问，如需访问请联系管理员。\r\n")))
 			} else {
-				bufferedWriter.Write([]byte(httpx.Http302(nodeInfo.RedirectUrl)))
+				bufferedWriter.Write([]byte(httpx.Http302(nodeInfo.Redirect)))
 			}
 			return
 		}
@@ -361,11 +362,11 @@ func (w *ServerWorker) doRedirect(ctx context.Context, meta *FrameMetadata, rawR
 			tlsConn := tls.Server(fakeConn, config)
 
 			// if node info contain redirect url then return http status with 302 otherwise return 403 with default content
-			if nodeInfo.RedirectUrl == "" {
+			if nodeInfo.Redirect == "" {
 				_, err = tlsConn.Write([]byte(httpx.Http403("该网站被阻止访问，如需访问请联系管理员。\r\n")))
 
 			} else {
-				_, err = tlsConn.Write([]byte(httpx.Http302(nodeInfo.RedirectUrl)))
+				_, err = tlsConn.Write([]byte(httpx.Http302(nodeInfo.Redirect)))
 			}
 
 			if err != nil {

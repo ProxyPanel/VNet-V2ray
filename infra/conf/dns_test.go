@@ -2,55 +2,55 @@ package conf_test
 
 import (
 	"encoding/json"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
-	"v2ray.com/core/app/dns"
-	"v2ray.com/core/app/router"
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/net"
-	"v2ray.com/core/common/platform"
-	"v2ray.com/core/common/platform/filesystem"
-	. "v2ray.com/core/infra/conf"
+	"google.golang.org/protobuf/runtime/protoiface"
+
+	"github.com/v2fly/v2ray-core/v4/app/dns"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/net"
+	"github.com/v2fly/v2ray-core/v4/common/platform/filesystem"
+	"github.com/v2fly/v2ray-core/v4/infra/conf"
+	_ "github.com/v2fly/v2ray-core/v4/infra/conf/geodata/standard"
 )
 
 func init() {
+	const (
+		geoipURL   = "https://raw.githubusercontent.com/v2fly/geoip/release/geoip.dat"
+		geositeURL = "https://raw.githubusercontent.com/v2fly/domain-list-community/release/dlc.dat"
+	)
+
 	wd, err := os.Getwd()
 	common.Must(err)
 
-	common.Must(filesystem.CopyFile(platform.GetAssetLocation("geoip.dat"), filepath.Join(wd, "..", "..", "release", "config", "geoip.dat")))
+	tempPath := filepath.Join(wd, "..", "..", "testing", "temp")
+	geoipPath := filepath.Join(tempPath, "geoip.dat")
+	geositePath := filepath.Join(tempPath, "geosite.dat")
 
-	geositeFilePath := platform.GetAssetLocation("geosite.dat")
-	geositeFile, err := os.OpenFile(geositeFilePath, os.O_CREATE|os.O_WRONLY, 0600)
-	common.Must(err)
-	defer geositeFile.Close()
+	os.Setenv("v2ray.location.asset", tempPath)
 
-	list := &router.GeoSiteList{
-		Entry: []*router.GeoSite{
-			{
-				CountryCode: "TEST",
-				Domain: []*router.Domain{
-					{Type: router.Domain_Full, Value: "example.com"},
-				},
-			},
-		},
+	if _, err := os.Stat(geoipPath); err != nil && errors.Is(err, fs.ErrNotExist) {
+		common.Must(os.MkdirAll(tempPath, 0o755))
+		geoipBytes, err := common.FetchHTTPContent(geoipURL)
+		common.Must(err)
+		common.Must(filesystem.WriteFile(geoipPath, geoipBytes))
 	}
-
-	listBytes, err := proto.Marshal(list)
-	common.Must(err)
-	common.Must2(geositeFile.Write(listBytes))
+	if _, err := os.Stat(geositePath); err != nil && errors.Is(err, fs.ErrNotExist) {
+		common.Must(os.MkdirAll(tempPath, 0o755))
+		geositeBytes, err := common.FetchHTTPContent(geositeURL)
+		common.Must(err)
+		common.Must(filesystem.WriteFile(geositePath, geositeBytes))
+	}
 }
-func TestDnsConfigParsing(t *testing.T) {
-	geositePath := platform.GetAssetLocation("geosite.dat")
-	defer func() {
-		os.Remove(geositePath)
-	}()
 
-	parserCreator := func() func(string) (proto.Message, error) {
-		return func(s string) (proto.Message, error) {
-			config := new(DnsConfig)
+func TestDNSConfigParsing(t *testing.T) {
+	parserCreator := func() func(string) (protoiface.MessageV1, error) {
+		return func(s string) (protoiface.MessageV1, error) {
+			config := new(conf.DNSConfig)
 			if err := json.Unmarshal([]byte(s), config); err != nil {
 				return nil, err
 			}
@@ -63,17 +63,23 @@ func TestDnsConfigParsing(t *testing.T) {
 			Input: `{
 				"servers": [{
 					"address": "8.8.8.8",
+					"clientIp": "10.0.0.1",
 					"port": 5353,
-					"domains": ["domain:v2ray.com"]
+					"skipFallback": true,
+					"domains": ["domain:v2fly.org"]
 				}],
 				"hosts": {
-					"v2ray.com": "127.0.0.1",
+					"v2fly.org": "127.0.0.1",
+					"www.v2fly.org": ["1.2.3.4", "5.6.7.8"],
 					"domain:example.com": "google.com",
-					"geosite:test": "10.0.0.1",
-					"keyword:google": "8.8.8.8",
+					"geosite:test": ["127.0.0.1", "127.0.0.2"],
+					"keyword:google": ["8.8.8.8", "8.8.4.4"],
 					"regexp:.*\\.com": "8.8.4.4"
 				},
-				"clientIp": "10.0.0.1"
+				"clientIp": "10.0.0.1",
+				"queryStrategy": "UseIPv4",
+				"disableCache": true,
+				"disableFallback": true
 			}`,
 			Parser: parserCreator(),
 			Output: &dns.Config{
@@ -88,10 +94,18 @@ func TestDnsConfigParsing(t *testing.T) {
 							Network: net.Network_UDP,
 							Port:    5353,
 						},
+						ClientIp:     []byte{10, 0, 0, 1},
+						SkipFallback: true,
 						PrioritizedDomain: []*dns.NameServer_PriorityDomain{
 							{
 								Type:   dns.DomainMatchingType_Subdomain,
-								Domain: "v2ray.com",
+								Domain: "v2fly.org",
+							},
+						},
+						OriginalRules: []*dns.NameServer_OriginalRule{
+							{
+								Rule: "domain:v2fly.org",
+								Size: 1,
 							},
 						},
 					},
@@ -104,13 +118,13 @@ func TestDnsConfigParsing(t *testing.T) {
 					},
 					{
 						Type:   dns.DomainMatchingType_Full,
-						Domain: "example.com",
-						Ip:     [][]byte{{10, 0, 0, 1}},
+						Domain: "test.example.com",
+						Ip:     [][]byte{{127, 0, 0, 1}, {127, 0, 0, 2}},
 					},
 					{
 						Type:   dns.DomainMatchingType_Keyword,
 						Domain: "google",
-						Ip:     [][]byte{{8, 8, 8, 8}},
+						Ip:     [][]byte{{8, 8, 8, 8}, {8, 8, 4, 4}},
 					},
 					{
 						Type:   dns.DomainMatchingType_Regex,
@@ -119,11 +133,19 @@ func TestDnsConfigParsing(t *testing.T) {
 					},
 					{
 						Type:   dns.DomainMatchingType_Full,
-						Domain: "v2ray.com",
+						Domain: "v2fly.org",
 						Ip:     [][]byte{{127, 0, 0, 1}},
 					},
+					{
+						Type:   dns.DomainMatchingType_Full,
+						Domain: "www.v2fly.org",
+						Ip:     [][]byte{{1, 2, 3, 4}, {5, 6, 7, 8}},
+					},
 				},
-				ClientIp: []byte{10, 0, 0, 1},
+				ClientIp:        []byte{10, 0, 0, 1},
+				QueryStrategy:   dns.QueryStrategy_USE_IP4,
+				DisableCache:    true,
+				DisableFallback: true,
 			},
 		},
 	})

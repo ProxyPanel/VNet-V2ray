@@ -1,6 +1,7 @@
 package scenarios
 
 import (
+	"bytes"
 	"crypto/rand"
 	"fmt"
 	"io"
@@ -13,16 +14,16 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/google/go-cmp/cmp"
-	"v2ray.com/core"
-	"v2ray.com/core/app/dispatcher"
-	"v2ray.com/core/app/proxyman"
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/errors"
-	"v2ray.com/core/common/log"
-	"v2ray.com/core/common/net"
-	"v2ray.com/core/common/retry"
-	"v2ray.com/core/common/serial"
+
+	core "github.com/v2fly/v2ray-core/v4"
+	"github.com/v2fly/v2ray-core/v4/app/dispatcher"
+	"github.com/v2fly/v2ray-core/v4/app/proxyman"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/errors"
+	"github.com/v2fly/v2ray-core/v4/common/log"
+	"github.com/v2fly/v2ray-core/v4/common/net"
+	"github.com/v2fly/v2ray-core/v4/common/retry"
+	"github.com/v2fly/v2ray-core/v4/common/serial"
 )
 
 func xor(b []byte) []byte {
@@ -118,7 +119,7 @@ func genTestBinaryPath() {
 }
 
 func GetSourcePath() string {
-	return filepath.Join("v2ray.com", "core", "main")
+	return filepath.Join("github.com", "v2fly", "v2ray-core", "v4", "main")
 }
 
 func CloseAllServers(servers []*exec.Cmd) {
@@ -164,7 +165,7 @@ func testTCPConn(port net.Port, payloadSize int, timeout time.Duration) func() e
 	}
 }
 
-func testUDPConn(port net.Port, payloadSize int, timeout time.Duration) func() error {
+func testUDPConn(port net.Port, payloadSize int, timeout time.Duration) func() error { // nolint: unparam
 	return func() error {
 		conn, err := net.DialUDP("udp", nil, &net.UDPAddr{
 			IP:   []byte{127, 0, 0, 1},
@@ -196,9 +197,12 @@ func testTCPConn2(conn net.Conn, payloadSize int, timeout time.Duration) func() 
 		if err != nil {
 			return err
 		}
-		if r := cmp.Diff(response, xor(payload)); r != "" {
+		_ = response
+
+		if r := bytes.Compare(response, xor(payload)); r != 0 {
 			return errors.New(r)
 		}
+
 		return nil
 	}
 }

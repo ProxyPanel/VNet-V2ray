@@ -2,8 +2,9 @@ package session
 
 import (
 	"context"
-	"v2ray.com/core/common/buf"
-	"v2ray.com/core/common/net"
+
+	"github.com/v2fly/v2ray-core/v4/common/buf"
+	"github.com/v2fly/v2ray-core/v4/common/net"
 )
 
 type sessionKey int
@@ -17,6 +18,8 @@ const (
 	contentSessionKey
 	muxPreferedSessionKey
 	proxyLimiterSessionKey
+	sockoptSessionKey
+	trackedConnectionErrorKey
 )
 
 type Connection interface {
@@ -93,4 +96,62 @@ func ProxyLimiterFromContext(ctx context.Context) *buf.ProxyLimiter {
 		return val
 	}
 	return nil
+}
+
+// ContextWithSockopt returns a new context with Socket configs included
+func ContextWithSockopt(ctx context.Context, s *Sockopt) context.Context {
+	return context.WithValue(ctx, sockoptSessionKey, s)
+}
+
+// SockoptFromContext returns Socket configs in this context, or nil if not contained.
+func SockoptFromContext(ctx context.Context) *Sockopt {
+	if sockopt, ok := ctx.Value(sockoptSessionKey).(*Sockopt); ok {
+		return sockopt
+	}
+	return nil
+}
+
+func GetTransportLayerProxyTagFromContext(ctx context.Context) string {
+	if ContentFromContext(ctx) == nil {
+		return ""
+	}
+	return ContentFromContext(ctx).Attribute("transportLayerOutgoingTag")
+}
+
+func SetTransportLayerProxyTagToContext(ctx context.Context, tag string) context.Context {
+	if contentFromContext := ContentFromContext(ctx); contentFromContext == nil {
+		ctx = ContextWithContent(ctx, &Content{})
+	}
+	ContentFromContext(ctx).SetAttribute("transportLayerOutgoingTag", tag)
+	return ctx
+}
+
+func GetForcedOutboundTagFromContext(ctx context.Context) string {
+	if ContentFromContext(ctx) == nil {
+		return ""
+	}
+	return ContentFromContext(ctx).Attribute("forcedOutboundTag")
+}
+
+func SetForcedOutboundTagToContext(ctx context.Context, tag string) context.Context {
+	if contentFromContext := ContentFromContext(ctx); contentFromContext == nil {
+		ctx = ContextWithContent(ctx, &Content{})
+	}
+	ContentFromContext(ctx).SetAttribute("forcedOutboundTag", tag)
+	return ctx
+}
+
+type TrackedRequestErrorFeedback interface {
+	SubmitError(err error)
+}
+
+func SubmitOutboundErrorToOriginator(ctx context.Context, err error) {
+	if errorTracker := ctx.Value(trackedConnectionErrorKey); errorTracker != nil {
+		errorTracker := errorTracker.(TrackedRequestErrorFeedback)
+		errorTracker.SubmitError(err)
+	}
+}
+
+func TrackedConnectionError(ctx context.Context, tracker TrackedRequestErrorFeedback) context.Context {
+	return context.WithValue(ctx, trackedConnectionErrorKey, tracker)
 }

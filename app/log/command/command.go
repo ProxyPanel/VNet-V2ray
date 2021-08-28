@@ -2,16 +2,16 @@
 
 package command
 
-//go:generate errorgen
+//go:generate go run github.com/v2fly/v2ray-core/v4/common/errors/errorgen
 
 import (
 	"context"
 
 	grpc "google.golang.org/grpc"
 
-	"v2ray.com/core"
-	"v2ray.com/core/app/log"
-	"v2ray.com/core/common"
+	core "github.com/v2fly/v2ray-core/v4"
+	"github.com/v2fly/v2ray-core/v4/app/log"
+	"github.com/v2fly/v2ray-core/v4/common"
 )
 
 type LoggerServer struct {
@@ -32,6 +32,8 @@ func (s *LoggerServer) RestartLogger(ctx context.Context, request *RestartLogger
 	}
 	return &RestartLoggerResponse{}, nil
 }
+
+func (s *LoggerServer) mustEmbedUnimplementedLoggerServiceServer() {}
 
 type service struct {
 	v *core.Instance

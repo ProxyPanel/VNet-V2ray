@@ -7,12 +7,13 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/api"
-	"v2ray.com/core/common/log"
-	"v2ray.com/core/common/retry"
-	"v2ray.com/core/common/task"
-	tf_feature "v2ray.com/core/features/traffic"
+
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/api"
+	"github.com/v2fly/v2ray-core/v4/common/log"
+	"github.com/v2fly/v2ray-core/v4/common/retry"
+	"github.com/v2fly/v2ray-core/v4/common/task"
+	tf_feature "github.com/v2fly/v2ray-core/v4/features/traffic"
 )
 
 type Traffic struct {

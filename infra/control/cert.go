@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/protocol/tls/cert"
-	"v2ray.com/core/common/task"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/protocol/tls/cert"
+	"github.com/v2fly/v2ray-core/v4/common/task"
 )
 
 type stringList []string
@@ -33,8 +33,7 @@ type jsonCert struct {
 	Key         []string `json:"key"`
 }
 
-type CertificateCommand struct {
-}
+type CertificateCommand struct{}
 
 func (c *CertificateCommand) Name() string {
 	return "cert"
@@ -44,7 +43,7 @@ func (c *CertificateCommand) Description() Description {
 	return Description{
 		Short: "Generate TLS certificates.",
 		Usage: []string{
-			"v2ctl cert [--ca] [--domain=v2ray.com] [--expire=240h]",
+			"v2ctl cert [--ca] [--domain=v2fly.org] [--expire=240h]",
 			"Generate new TLS certificate",
 			"--ca The new certificate is a CA certificate",
 			"--domain Common name for the certificate",
@@ -53,7 +52,7 @@ func (c *CertificateCommand) Description() Description {
 	}
 }
 
-func (c *CertificateCommand) printJson(certificate *cert.Certificate) {
+func (c *CertificateCommand) printJSON(certificate *cert.Certificate) {
 	certPEM, keyPEM := certificate.ToPEM()
 	jCert := &jsonCert{
 		Certificate: strings.Split(strings.TrimSpace(string(certPEM)), "\n"),
@@ -122,7 +121,7 @@ func (c *CertificateCommand) Execute(args []string) error {
 	}
 
 	if *jsonOutput {
-		c.printJson(cert)
+		c.printJSON(cert)
 	}
 
 	if len(*fileOutput) > 0 {

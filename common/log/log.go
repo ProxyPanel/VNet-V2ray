@@ -1,9 +1,9 @@
-package log // import "v2ray.com/core/common/log"
+package log
 
 import (
 	"sync"
 
-	"v2ray.com/core/common/serial"
+	"github.com/v2fly/v2ray-core/v4/common/serial"
 )
 
 // Message is the interface for all log messages.
@@ -32,9 +32,7 @@ func Record(msg Message) {
 	logHandler.Handle(msg)
 }
 
-var (
-	logHandler syncHandler
-)
+var logHandler syncHandler
 
 // RegisterHandler register a new handler as current log handler. Previous registered handler will be discarded.
 func RegisterHandler(handler Handler) {

@@ -9,19 +9,18 @@
 // connections.
 package core
 
-//go:generate go install "v2ray.com/core/common/errors/errorgen"
-//go:generate errorgen
+//go:generate go run github.com/v2fly/v2ray-core/v4/common/errors/errorgen
 
 import (
 	"runtime"
 
-	"v2ray.com/core/common/serial"
+	"github.com/v2fly/v2ray-core/v4/common/serial"
 )
 
 var (
-	version  = "1.7.0"
+	version  = "4.40.0"
 	build    = "Custom"
-	codename = "vnet-v2ray"
+	codename = "V2Fly, a community-driven edition of V2Ray."
 	intro    = "A unified platform for anti-censorship."
 )
 
@@ -34,7 +33,7 @@ func Version() string {
 // VersionStatement returns a list of strings representing the full version info.
 func VersionStatement() []string {
 	return []string{
-		serial.Concat("vnet-v2ray ", Version(), " (", codename, ") ", build, " (", runtime.Version(), " ", runtime.GOOS, "/", runtime.GOARCH, ")"),
+		serial.Concat("V2Ray ", Version(), " (", codename, ") ", build, " (", runtime.Version(), " ", runtime.GOOS, "/", runtime.GOARCH, ")"),
 		intro,
 	}
 }

@@ -3,8 +3,8 @@ package policy
 import (
 	"context"
 
-	"v2ray.com/core/common"
-	"v2ray.com/core/features/policy"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/features/policy"
 )
 
 // Instance is an instance of Policy manager.
@@ -19,13 +19,13 @@ func New(ctx context.Context, config *Config) (*Instance, error) {
 		levels: make(map[uint32]*Policy),
 		system: config.System,
 	}
-	//if len(config.Level) > 0 {
+	// if len(config.Level) > 0 {
 	for lv, p := range config.Level {
 		pp := defaultPolicy()
 		pp.overrideWith(p)
 		m.levels[lv] = pp
 	}
-	//}
+	// }
 
 	return m, nil
 }

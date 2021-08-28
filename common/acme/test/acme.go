@@ -6,13 +6,14 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"fmt"
+	"io/ioutil"
+	"log"
+
 	"github.com/go-acme/lego/v3/certcrypto"
 	"github.com/go-acme/lego/v3/certificate"
 	"github.com/go-acme/lego/v3/lego"
 	"github.com/go-acme/lego/v3/providers/dns/alidns"
 	"github.com/go-acme/lego/v3/registration"
-	"io/ioutil"
-	"log"
 )
 
 // You'll need a user or account type that implements acme.User
@@ -104,14 +105,13 @@ func main() {
 	// private key, and a certificate URL. SAVE THESE TO DISK.
 	fmt.Printf("%#v\n", certificates)
 
-	if err := ioutil.WriteFile("C:\\private.pem",certificates.PrivateKey,0644);err !=nil{
+	if err := ioutil.WriteFile("C:\\private.pem", certificates.PrivateKey, 0644); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := ioutil.WriteFile("C:\\cert.pem",certificates.Certificate,0644);err != nil{
+	if err := ioutil.WriteFile("C:\\cert.pem", certificates.Certificate, 0644); err != nil {
 		log.Fatal(err)
 	}
-
 
 	// ... all done.
 }

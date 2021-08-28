@@ -6,17 +6,17 @@ import (
 	"bytes"
 	"context"
 
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/net"
-	"v2ray.com/core/features/routing"
-	"v2ray.com/core/transport/internet/udp"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/net"
+	"github.com/v2fly/v2ray-core/v4/features/routing"
+	"github.com/v2fly/v2ray-core/v4/transport/internet/udp"
 )
 
 // CreateObject creates a new object based on the given V2Ray instance and config. The V2Ray instance may be nil.
 func CreateObject(v *Instance, config interface{}) (interface{}, error) {
-	ctx := context.Background()
+	var ctx context.Context
 	if v != nil {
-		ctx = context.WithValue(ctx, v2rayKey, v)
+		ctx = toContext(v.ctx, v)
 	}
 	return common.CreateObject(ctx, config)
 }
@@ -47,10 +47,13 @@ func StartInstance(configFormat string, configBytes []byte) (*Instance, error) {
 //
 // v2ray:api:stable
 func Dial(ctx context.Context, v *Instance, dest net.Destination) (net.Conn, error) {
+	ctx = toContext(ctx, v)
+
 	dispatcher := v.GetFeature(routing.DispatcherType())
 	if dispatcher == nil {
 		return nil, newError("routing.Dispatcher is not registered in V2Ray core")
 	}
+
 	r, err := dispatcher.(routing.Dispatcher).Dispatch(ctx, dest)
 	if err != nil {
 		return nil, err
@@ -71,6 +74,8 @@ func Dial(ctx context.Context, v *Instance, dest net.Destination) (net.Conn, err
 //
 // v2ray:api:beta
 func DialUDP(ctx context.Context, v *Instance) (net.PacketConn, error) {
+	ctx = toContext(ctx, v)
+
 	dispatcher := v.GetFeature(routing.DispatcherType())
 	if dispatcher == nil {
 		return nil, newError("routing.Dispatcher is not registered in V2Ray core")

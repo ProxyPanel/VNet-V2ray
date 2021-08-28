@@ -4,9 +4,11 @@ import (
 	"io"
 	"log"
 	"os"
-	"v2ray.com/core/common/platform"
-	"v2ray.com/core/common/signal/done"
-	"v2ray.com/core/common/signal/semaphore"
+	"time"
+
+	"github.com/v2fly/v2ray-core/v4/common/platform"
+	"github.com/v2fly/v2ray-core/v4/common/signal/done"
+	"github.com/v2fly/v2ray-core/v4/common/signal/semaphore"
 )
 
 // Writer is the interface for writing logs.
@@ -27,36 +29,54 @@ type generalLogger struct {
 
 // NewLogger returns a generic log handler that can handle all type of messages.
 func NewLogger(logWriterCreator WriterCreator) Handler {
-	logger := &generalLogger{
+	return &generalLogger{
 		creator: logWriterCreator,
-		buffer:  make(chan Message, 2048),
+		buffer:  make(chan Message, 16),
 		access:  semaphore.New(1),
 		done:    done.New(),
 	}
-	go logger.run()
-	return logger
 }
 
 func (l *generalLogger) run() {
 	defer l.access.Signal()
 
+	dataWritten := false
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+
 	logger := l.creator()
 	if logger == nil {
 		return
 	}
-	defer logger.Close() // nolint: errcheck
+	defer logger.Close()
+
 	for {
 		select {
 		case <-l.done.Wait():
 			return
 		case msg := <-l.buffer:
-			logger.Write(msg.String() + platform.LineSeparator()) // nolint: errcheck
+			logger.Write(msg.String() + platform.LineSeparator())
+			dataWritten = true
+		case <-ticker.C:
+			if !dataWritten {
+				return
+			}
+			dataWritten = false
 		}
 	}
 }
 
 func (l *generalLogger) Handle(msg Message) {
-	l.buffer <- msg
+	select {
+	case l.buffer <- msg:
+	default:
+	}
+
+	select {
+	case <-l.access.Wait():
+		go l.run()
+	default:
+	}
 }
 
 func (l *generalLogger) Close() error {
@@ -110,13 +130,13 @@ func CreateStderrLogWriter() WriterCreator {
 
 // CreateFileLogWriter returns a LogWriterCreator that creates LogWriter for the given file.
 func CreateFileLogWriter(path string) (WriterCreator, error) {
-	file, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	file, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0o600)
 	if err != nil {
 		return nil, err
 	}
 	file.Close()
 	return func() Writer {
-		file, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+		file, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0o600)
 		if err != nil {
 			return nil
 		}

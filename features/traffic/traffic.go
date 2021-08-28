@@ -1,6 +1,6 @@
 package traffic
 
-import "v2ray.com/core/features"
+import "github.com/v2fly/v2ray-core/v4/features"
 
 type Traffic interface {
 	Up(uint64) uint64
@@ -10,9 +10,9 @@ type Traffic interface {
 type Manager interface {
 	features.Feature
 
-	Up(key string,count uint64)
+	Up(key string, count uint64)
 
-	Down(Key string,count uint64)
+	Down(Key string, count uint64)
 
 	GetTraffic(string) Traffic
 }

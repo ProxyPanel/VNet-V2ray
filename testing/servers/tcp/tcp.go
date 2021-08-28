@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"io"
 
-	"v2ray.com/core/common/buf"
-	"v2ray.com/core/common/net"
-	"v2ray.com/core/common/task"
-	"v2ray.com/core/transport/internet"
-	"v2ray.com/core/transport/pipe"
+	"github.com/v2fly/v2ray-core/v4/common/buf"
+	"github.com/v2fly/v2ray-core/v4/common/net"
+	"github.com/v2fly/v2ray-core/v4/common/task"
+	"github.com/v2fly/v2ray-core/v4/transport/internet"
+	"github.com/v2fly/v2ray-core/v4/transport/pipe"
 )
 
 type Server struct {
@@ -65,7 +65,7 @@ func (server *Server) handleConnection(conn net.Conn) {
 
 	pReader, pWriter := pipe.New(pipe.WithoutSizeLimit())
 	err := task.Run(context.Background(), func() error {
-		defer pWriter.Close() // nolint: errcheck
+		defer pWriter.Close()
 
 		for {
 			b := buf.New()
@@ -97,12 +97,11 @@ func (server *Server) handleConnection(conn net.Conn) {
 			}
 		}
 	})
-
 	if err != nil {
 		fmt.Println("failed to transfer data: ", err.Error())
 	}
 
-	conn.Close() // nolint: errcheck
+	conn.Close()
 }
 
 func (server *Server) Close() error {

@@ -3,8 +3,9 @@
 package router
 
 import (
-	"v2ray.com/core/common/net"
-	"v2ray.com/core/features/outbound"
+	"github.com/v2fly/v2ray-core/v4/common/net"
+	"github.com/v2fly/v2ray-core/v4/features/outbound"
+	"github.com/v2fly/v2ray-core/v4/features/routing"
 )
 
 // CIDRList is an alias of []*CIDR to provide sort.Interface.
@@ -59,7 +60,8 @@ func (r *Rule) GetTag() (string, error) {
 	return r.Tag, nil
 }
 
-func (r *Rule) Apply(ctx *Context) bool {
+// Apply checks rule matching of current routing context.
+func (r *Rule) Apply(ctx routing.Context) bool {
 	return r.Condition.Apply(ctx)
 }
 
@@ -67,11 +69,23 @@ func (rr *RoutingRule) BuildCondition() (Condition, error) {
 	conds := NewConditionChan()
 
 	if len(rr.Domain) > 0 {
-		matcher, err := NewDomainMatcher(rr.Domain)
-		if err != nil {
-			return nil, newError("failed to build domain condition").Base(err)
+		switch rr.DomainMatcher {
+		case "mph", "hybrid":
+			matcher, err := NewMphMatcherGroup(rr.Domain)
+			if err != nil {
+				return nil, newError("failed to build domain condition with MphDomainMatcher").Base(err)
+			}
+			newError("MphDomainMatcher is enabled for ", len(rr.Domain), " domain rule(s)").AtDebug().WriteToLog()
+			conds.Add(matcher)
+		case "linear":
+			fallthrough
+		default:
+			matcher, err := NewDomainMatcher(rr.Domain)
+			if err != nil {
+				return nil, newError("failed to build domain condition").Base(err)
+			}
+			conds.Add(matcher)
 		}
-		conds.Add(matcher)
 	}
 
 	if len(rr.UserEmail) > 0 {
@@ -83,9 +97,13 @@ func (rr *RoutingRule) BuildCondition() (Condition, error) {
 	}
 
 	if rr.PortList != nil {
-		conds.Add(NewPortMatcher(rr.PortList))
+		conds.Add(NewPortMatcher(rr.PortList, false))
 	} else if rr.PortRange != nil {
-		conds.Add(NewPortMatcher(&net.PortList{Range: []*net.PortRange{rr.PortRange}}))
+		conds.Add(NewPortMatcher(&net.PortList{Range: []*net.PortRange{rr.PortRange}}, false))
+	}
+
+	if rr.SourcePortList != nil {
+		conds.Add(NewPortMatcher(rr.SourcePortList, true))
 	}
 
 	if len(rr.Networks) > 0 {
@@ -142,9 +160,20 @@ func (rr *RoutingRule) BuildCondition() (Condition, error) {
 }
 
 func (br *BalancingRule) Build(ohm outbound.Manager) (*Balancer, error) {
-	return &Balancer{
-		selectors: br.OutboundSelector,
-		strategy:  &RandomStrategy{},
-		ohm:       ohm,
-	}, nil
+	switch br.Strategy {
+	case "leastPing":
+		return &Balancer{
+			selectors: br.OutboundSelector,
+			strategy:  &LeastPingStrategy{},
+			ohm:       ohm,
+		}, nil
+	case "random":
+		fallthrough
+	default:
+		return &Balancer{
+			selectors: br.OutboundSelector,
+			strategy:  &RandomStrategy{},
+			ohm:       ohm,
+		}, nil
+	}
 }

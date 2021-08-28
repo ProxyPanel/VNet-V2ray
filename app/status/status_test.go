@@ -2,13 +2,14 @@ package status_test
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/shirou/gopsutil/mem"
 	"github.com/shirou/gopsutil/net"
-	"time"
-	"v2ray.com/core/common/api"
-	"v2ray.com/core/common/task"
 
-	"v2ray.com/core/common"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/api"
+	"github.com/v2fly/v2ray-core/v4/common/task"
 )
 
 func ExampleGOUtils() {
@@ -42,7 +43,7 @@ func ExampleGOUtils() {
 
 }
 
-func ExampleStatus(){
+func ExampleStatus() {
 
 	// Output:
 

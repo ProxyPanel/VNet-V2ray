@@ -7,29 +7,27 @@ import (
 	"context"
 	"time"
 
-	"v2ray.com/core"
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/buf"
-	"v2ray.com/core/common/crypto"
-	"v2ray.com/core/common/net"
-	"v2ray.com/core/common/protocol"
-	"v2ray.com/core/common/session"
-	"v2ray.com/core/common/signal"
-	"v2ray.com/core/common/task"
-	"v2ray.com/core/features/policy"
-	"v2ray.com/core/features/routing"
-	"v2ray.com/core/transport/internet"
+	core "github.com/v2fly/v2ray-core/v4"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/buf"
+	"github.com/v2fly/v2ray-core/v4/common/crypto"
+	"github.com/v2fly/v2ray-core/v4/common/net"
+	"github.com/v2fly/v2ray-core/v4/common/protocol"
+	"github.com/v2fly/v2ray-core/v4/common/session"
+	"github.com/v2fly/v2ray-core/v4/common/signal"
+	"github.com/v2fly/v2ray-core/v4/common/task"
+	"github.com/v2fly/v2ray-core/v4/features/policy"
+	"github.com/v2fly/v2ray-core/v4/features/routing"
+	"github.com/v2fly/v2ray-core/v4/transport/internet"
 )
 
-var (
-	dcList = []net.Address{
-		net.ParseAddress("149.154.175.50"),
-		net.ParseAddress("149.154.167.51"),
-		net.ParseAddress("149.154.175.100"),
-		net.ParseAddress("149.154.167.91"),
-		net.ParseAddress("149.154.171.5"),
-	}
-)
+var dcList = []net.Address{
+	net.ParseAddress("149.154.175.50"),
+	net.ParseAddress("149.154.167.51"),
+	net.ParseAddress("149.154.175.100"),
+	net.ParseAddress("149.154.167.91"),
+	net.ParseAddress("149.154.171.5"),
+}
 
 type Server struct {
 	user    *protocol.User
@@ -65,8 +63,10 @@ func (s *Server) Network() []net.Network {
 	return []net.Network{net.Network_TCP}
 }
 
-var ctype1 = []byte{0xef, 0xef, 0xef, 0xef}
-var ctype2 = []byte{0xee, 0xee, 0xee, 0xee}
+var (
+	ctype1 = []byte{0xef, 0xef, 0xef, 0xef}
+	ctype2 = []byte{0xee, 0xee, 0xee, 0xee}
+)
 
 func isValidConnectionType(c [4]byte) bool {
 	if bytes.Equal(c[:], ctype1) {
@@ -145,7 +145,7 @@ func (s *Server) Process(ctx context.Context, network net.Network, conn internet
 		return buf.Copy(link.Reader, writer, buf.UpdateActivity(timer))
 	}
 
-	var responseDoneAndCloseWriter = task.OnSuccess(response, task.Close(link.Writer))
+	responseDoneAndCloseWriter := task.OnSuccess(response, task.Close(link.Writer))
 	if err := task.Run(ctx, request, responseDoneAndCloseWriter); err != nil {
 		common.Interrupt(link.Reader)
 		common.Interrupt(link.Writer)

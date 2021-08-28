@@ -6,10 +6,10 @@ import (
 	"context"
 	"sync"
 
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/net"
-	"v2ray.com/core/common/signal/done"
-	"v2ray.com/core/transport"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/net"
+	"github.com/v2fly/v2ray-core/v4/common/signal/done"
+	"github.com/v2fly/v2ray-core/v4/transport"
 )
 
 // OutboundListener is a net.Listener for listening gRPC connections.
@@ -22,9 +22,9 @@ func (l *OutboundListener) add(conn net.Conn) {
 	select {
 	case l.buffer <- conn:
 	case <-l.done.Wait():
-		conn.Close() // nolint: errcheck
+		conn.Close()
 	default:
-		conn.Close() // nolint: errcheck
+		conn.Close()
 	}
 }
 
@@ -45,7 +45,7 @@ L:
 	for {
 		select {
 		case c := <-l.buffer:
-			c.Close() // nolint: errcheck
+			c.Close()
 		default:
 			break L
 		}

@@ -3,20 +3,22 @@ package control
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"flag"
 	"fmt"
 	"net"
 
-	"v2ray.com/core/common"
+	"github.com/v2fly/v2ray-core/v4/common"
+	v2tls "github.com/v2fly/v2ray-core/v4/transport/internet/tls"
 )
 
-type TlsPingCommand struct{}
+type TLSPingCommand struct{}
 
-func (c *TlsPingCommand) Name() string {
+func (c *TLSPingCommand) Name() string {
 	return "tlsping"
 }
 
-func (c *TlsPingCommand) Description() Description {
+func (c *TLSPingCommand) Description() Description {
 	return Description{
 		Short: "Ping the domain with TLS handshake",
 		Usage: []string{"v2ctl tlsping <domain> --ip <ip>"},
@@ -32,7 +34,7 @@ func printCertificates(certs []*x509.Certificate) {
 	}
 }
 
-func (c *TlsPingCommand) Execute(args []string) error {
+func (c *TLSPingCommand) Execute(args []string) error {
 	fs := flag.NewFlagSet(c.Name(), flag.ContinueOnError)
 	ipStr := fs.String("ip", "", "IP address of the domain")
 
@@ -45,7 +47,7 @@ func (c *TlsPingCommand) Execute(args []string) error {
 	}
 
 	domain := fs.Arg(0)
-	fmt.Println("Tls ping: ", domain)
+	fmt.Println("TLS ping: ", domain)
 
 	var ip net.IP
 	if len(*ipStr) > 0 {
@@ -75,6 +77,8 @@ func (c *TlsPingCommand) Execute(args []string) error {
 			NextProtos:         []string{"http/1.1"},
 			MaxVersion:         tls.VersionTLS12,
 			MinVersion:         tls.VersionTLS12,
+			// Do not release tool before v5's refactor
+			// VerifyPeerCertificate: showCert(),
 		})
 		err = tlsConn.Handshake()
 		if err != nil {
@@ -98,6 +102,8 @@ func (c *TlsPingCommand) Execute(args []string) error {
 			NextProtos: []string{"http/1.1"},
 			MaxVersion: tls.VersionTLS12,
 			MinVersion: tls.VersionTLS12,
+			// Do not release tool before v5's refactor
+			// VerifyPeerCertificate: showCert(),
 		})
 		err = tlsConn.Handshake()
 		if err != nil {
@@ -109,11 +115,19 @@ func (c *TlsPingCommand) Execute(args []string) error {
 		tlsConn.Close()
 	}
 
-	fmt.Println("Tls ping finished")
+	fmt.Println("TLS ping finished")
 
 	return nil
 }
 
+func showCert() func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+	return func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+		hash := v2tls.GenerateCertChainHash(rawCerts)
+		fmt.Println("Certificate Chain Hash: ", base64.StdEncoding.EncodeToString(hash))
+		return nil
+	}
+}
+
 func init() {
-	common.Must(RegisterCommand(&TlsPingCommand{}))
+	common.Must(RegisterCommand(&TLSPingCommand{}))
 }

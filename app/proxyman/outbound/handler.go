@@ -3,19 +3,46 @@ package outbound
 import (
 	"context"
 
-	"v2ray.com/core"
-	"v2ray.com/core/app/proxyman"
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/mux"
-	"v2ray.com/core/common/net"
-	"v2ray.com/core/common/session"
-	"v2ray.com/core/features/outbound"
-	"v2ray.com/core/proxy"
-	"v2ray.com/core/transport"
-	"v2ray.com/core/transport/internet"
-	"v2ray.com/core/transport/internet/tls"
-	"v2ray.com/core/transport/pipe"
+	core "github.com/v2fly/v2ray-core/v4"
+	"github.com/v2fly/v2ray-core/v4/app/proxyman"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/mux"
+	"github.com/v2fly/v2ray-core/v4/common/net"
+	"github.com/v2fly/v2ray-core/v4/common/session"
+	"github.com/v2fly/v2ray-core/v4/features/outbound"
+	"github.com/v2fly/v2ray-core/v4/features/policy"
+	"github.com/v2fly/v2ray-core/v4/features/stats"
+	"github.com/v2fly/v2ray-core/v4/proxy"
+	"github.com/v2fly/v2ray-core/v4/transport"
+	"github.com/v2fly/v2ray-core/v4/transport/internet"
+	"github.com/v2fly/v2ray-core/v4/transport/internet/tls"
+	"github.com/v2fly/v2ray-core/v4/transport/pipe"
 )
+
+func getStatCounter(v *core.Instance, tag string) (stats.Counter, stats.Counter) {
+	var uplinkCounter stats.Counter
+	var downlinkCounter stats.Counter
+
+	policy := v.GetFeature(policy.ManagerType()).(policy.Manager)
+	if len(tag) > 0 && policy.ForSystem().Stats.OutboundUplink {
+		statsManager := v.GetFeature(stats.ManagerType()).(stats.Manager)
+		name := "outbound>>>" + tag + ">>>traffic>>>uplink"
+		c, _ := stats.GetOrRegisterCounter(statsManager, name)
+		if c != nil {
+			uplinkCounter = c
+		}
+	}
+	if len(tag) > 0 && policy.ForSystem().Stats.OutboundDownlink {
+		statsManager := v.GetFeature(stats.ManagerType()).(stats.Manager)
+		name := "outbound>>>" + tag + ">>>traffic>>>downlink"
+		c, _ := stats.GetOrRegisterCounter(statsManager, name)
+		if c != nil {
+			downlinkCounter = c
+		}
+	}
+
+	return uplinkCounter, downlinkCounter
+}
 
 // Handler is an implements of outbound.Handler.
 type Handler struct {
@@ -25,14 +52,19 @@ type Handler struct {
 	proxy           proxy.Outbound
 	outboundManager outbound.Manager
 	mux             *mux.ClientManager
+	uplinkCounter   stats.Counter
+	downlinkCounter stats.Counter
 }
 
 // NewHandler create a new Handler based on the given configuration.
 func NewHandler(ctx context.Context, config *core.OutboundHandlerConfig) (outbound.Handler, error) {
 	v := core.MustFromContext(ctx)
+	uplinkCounter, downlinkCounter := getStatCounter(v, config.Tag)
 	h := &Handler{
 		tag:             config.Tag,
 		outboundManager: v.GetFeature(outbound.ManagerType()).(outbound.Manager),
+		uplinkCounter:   uplinkCounter,
+		downlinkCounter: downlinkCounter,
 	}
 
 	if config.SenderSettings != nil {
@@ -76,14 +108,15 @@ func NewHandler(ctx context.Context, config *core.OutboundHandlerConfig) (outbou
 		h.mux = &mux.ClientManager{
 			Enabled: h.senderSettings.MultiplexSettings.Enabled,
 			Picker: &mux.IncrementalWorkerPicker{
-				Factory: &mux.DialingWorkerFactory{
-					Proxy:  proxyHandler,
-					Dialer: h,
-					Strategy: mux.ClientStrategy{
+				Factory: mux.NewDialingWorkerFactory(
+					ctx,
+					proxyHandler,
+					h,
+					mux.ClientStrategy{
 						MaxConcurrency: config.Concurrency,
 						MaxConnection:  128,
 					},
-				},
+				),
 			},
 		}
 	}
@@ -101,13 +134,17 @@ func (h *Handler) Tag() string {
 func (h *Handler) Dispatch(ctx context.Context, link *transport.Link) {
 	if h.mux != nil && (h.mux.Enabled || session.MuxPreferedFromContext(ctx)) {
 		if err := h.mux.Dispatch(ctx, link); err != nil {
-			newError("failed to process mux outbound traffic").Base(err).WriteToLog(session.ExportIDToError(ctx))
+			err := newError("failed to process mux outbound traffic").Base(err)
+			session.SubmitOutboundErrorToOriginator(ctx, err)
+			err.WriteToLog(session.ExportIDToError(ctx))
 			common.Interrupt(link.Writer)
 		}
 	} else {
 		if err := h.proxy.Process(ctx, link, h); err != nil {
 			// Ensure outbound ray is properly closed.
-			newError("failed to process outbound traffic").Base(err).WriteToLog(session.ExportIDToError(ctx))
+			err := newError("failed to process outbound traffic").Base(err)
+			session.SubmitOutboundErrorToOriginator(ctx, err)
+			err.WriteToLog(session.ExportIDToError(ctx))
 			common.Interrupt(link.Writer)
 		} else {
 			common.Must(common.Close(link.Writer))
@@ -127,7 +164,7 @@ func (h *Handler) Address() net.Address {
 // Dial implements internet.Dialer.
 func (h *Handler) Dial(ctx context.Context, dest net.Destination) (internet.Connection, error) {
 	if h.senderSettings != nil {
-		if h.senderSettings.ProxySettings.HasTag() {
+		if h.senderSettings.ProxySettings.HasTag() && !h.senderSettings.ProxySettings.TransportLayerProxy {
 			tag := h.senderSettings.ProxySettings.Tag
 			handler := h.outboundManager.GetHandler(tag)
 			if handler != nil {
@@ -144,11 +181,11 @@ func (h *Handler) Dial(ctx context.Context, dest net.Destination) (internet.Conn
 				conn := net.NewConnection(net.ConnectionInputMulti(uplinkWriter), net.ConnectionOutputMulti(downlinkReader))
 
 				if config := tls.ConfigFromStreamSettings(h.streamSettings); config != nil {
-					tlsConfig := config.GetTLSConfig(tls.WithDestination(dest), tls.WithNextProto("h2"))
+					tlsConfig := config.GetTLSConfig(tls.WithDestination(dest))
 					conn = tls.Client(conn, tlsConfig)
 				}
 
-				return conn, nil
+				return h.getStatCouterConnection(conn), nil
 			}
 
 			newError("failed to get outbound handler with tag: ", tag).AtWarning().WriteToLog(session.ExportIDToError(ctx))
@@ -164,7 +201,25 @@ func (h *Handler) Dial(ctx context.Context, dest net.Destination) (internet.Conn
 		}
 	}
 
-	return internet.Dial(ctx, dest, h.streamSettings)
+	if h.senderSettings != nil && h.senderSettings.ProxySettings != nil && h.senderSettings.ProxySettings.HasTag() && h.senderSettings.ProxySettings.TransportLayerProxy {
+		tag := h.senderSettings.ProxySettings.Tag
+		newError("transport layer proxying to ", tag, " for dest ", dest).AtDebug().WriteToLog(session.ExportIDToError(ctx))
+		ctx = session.SetTransportLayerProxyTagToContext(ctx, tag)
+	}
+
+	conn, err := internet.Dial(ctx, dest, h.streamSettings)
+	return h.getStatCouterConnection(conn), err
+}
+
+func (h *Handler) getStatCouterConnection(conn internet.Connection) internet.Connection {
+	if h.uplinkCounter != nil || h.downlinkCounter != nil {
+		return &internet.StatCouterConnection{
+			Connection:   conn,
+			ReadCounter:  h.downlinkCounter,
+			WriteCounter: h.uplinkCounter,
+		}
+	}
+	return conn
 }
 
 // GetOutbound implements proxy.GetOutbound.

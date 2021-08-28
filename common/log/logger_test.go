@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/buf"
-	. "v2ray.com/core/common/log"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/buf"
+	. "github.com/v2fly/v2ray-core/v4/common/log"
 )
 
 func TestFileLogger(t *testing.T) {
@@ -29,7 +29,7 @@ func TestFileLogger(t *testing.T) {
 
 	f, err = os.Open(path)
 	common.Must(err)
-	defer f.Close() // nolint: errcheck
+	defer f.Close()
 
 	b, err := buf.ReadAllToBytes(f)
 	common.Must(err)

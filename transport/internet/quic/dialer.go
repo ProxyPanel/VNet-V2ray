@@ -7,12 +7,13 @@ import (
 	"sync"
 	"time"
 
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/net"
-	"v2ray.com/core/common/task"
-	quic "v2ray.com/core/external/github.com/lucas-clemente/quic-go"
-	"v2ray.com/core/transport/internet"
-	"v2ray.com/core/transport/internet/tls"
+	"github.com/lucas-clemente/quic-go"
+
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/net"
+	"github.com/v2fly/v2ray-core/v4/common/task"
+	"github.com/v2fly/v2ray-core/v4/transport/internet"
+	"github.com/v2fly/v2ray-core/v4/transport/internet/tls"
 )
 
 type sessionContext struct {
@@ -63,7 +64,7 @@ func removeInactiveSessions(sessions []*sessionContext) []*sessionContext {
 			activeSessions = append(activeSessions, s)
 			continue
 		}
-		if err := s.session.Close(); err != nil {
+		if err := s.session.CloseWithError(0, ""); err != nil {
 			newError("failed to close session").Base(err).WriteToLog()
 		}
 		if err := s.rawConn.Close(); err != nil {
@@ -149,9 +150,10 @@ func (s *clientSessions) openConnection(destAddr net.Addr, config *Config, tlsCo
 	}
 
 	quicConfig := &quic.Config{
-		ConnectionIDLength: 12,
-		HandshakeTimeout:   time.Second * 8,
-		IdleTimeout:        time.Second * 30,
+		ConnectionIDLength:   12,
+		HandshakeIdleTimeout: time.Second * 8,
+		MaxIdleTimeout:       time.Second * 30,
+		KeepAlive:            true,
 	}
 
 	conn, err := wrapSysConn(rawConn, config)

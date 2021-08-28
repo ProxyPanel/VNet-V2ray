@@ -12,11 +12,12 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/patrickmn/go-cache"
 	"math/big"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/patrickmn/go-cache"
 )
 
 func LoadCa(caRaw []byte, keyRaw []byte) (caCert *x509.Certificate, privateKey crypto.PrivateKey, err error) {

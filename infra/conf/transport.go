@@ -1,9 +1,9 @@
 package conf
 
 import (
-	"v2ray.com/core/common/serial"
-	"v2ray.com/core/transport"
-	"v2ray.com/core/transport/internet"
+	"github.com/v2fly/v2ray-core/v4/common/serial"
+	"github.com/v2fly/v2ray-core/v4/transport"
+	"github.com/v2fly/v2ray-core/v4/transport/internet"
 )
 
 type TransportConfig struct {
@@ -13,6 +13,8 @@ type TransportConfig struct {
 	HTTPConfig *HTTPConfig         `json:"httpSettings"`
 	DSConfig   *DomainSocketConfig `json:"dsSettings"`
 	QUICConfig *QUICConfig         `json:"quicSettings"`
+	GunConfig  *GunConfig          `json:"gunSettings"`
+	GRPCConfig *GunConfig          `json:"grpcSettings"`
 }
 
 // Build implements Buildable.
@@ -82,6 +84,20 @@ func (c *TransportConfig) Build() (*transport.Config, error) {
 		config.TransportSettings = append(config.TransportSettings, &internet.TransportConfig{
 			ProtocolName: "quic",
 			Settings:     serial.ToTypedMessage(qs),
+		})
+	}
+
+	if c.GunConfig == nil {
+		c.GunConfig = c.GRPCConfig
+	}
+	if c.GunConfig != nil {
+		gs, err := c.GunConfig.Build()
+		if err != nil {
+			return nil, newError("Failed to build Gun config.").Base(err)
+		}
+		config.TransportSettings = append(config.TransportSettings, &internet.TransportConfig{
+			ProtocolName: "gun",
+			Settings:     serial.ToTypedMessage(gs),
 		})
 	}
 

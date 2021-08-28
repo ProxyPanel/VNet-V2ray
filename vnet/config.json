@@ -1,5 +1,7 @@
 {
-  "api_server":"http://panel.iovoi.xyz/",
-  "key": "geptpxzp8zwdatc5",
-  "node_id":16
+  "url": "https://v.rcauth.com",
+  "key": "d9wjqzcq",
+  "id": 2,
+  "error_log_path": "/var/log/vnet-v2ray/error.log",
+  "access_log_path": "/var/log/vnet-v2ray/access.log"
 }

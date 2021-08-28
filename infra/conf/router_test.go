@@ -3,12 +3,13 @@ package conf_test
 import (
 	"encoding/json"
 	"testing"
+	_ "unsafe"
 
 	"github.com/golang/protobuf/proto"
 
-	"v2ray.com/core/app/router"
-	"v2ray.com/core/common/net"
-	. "v2ray.com/core/infra/conf"
+	"github.com/v2fly/v2ray-core/v4/app/router"
+	"github.com/v2fly/v2ray-core/v4/common/net"
+	. "github.com/v2fly/v2ray-core/v4/infra/conf"
 )
 
 func TestRouterConfig(t *testing.T) {
@@ -34,6 +35,14 @@ func TestRouterConfig(t *testing.T) {
 							"domain": [
 								"baidu.com",
 								"qq.com"
+							],
+							"outboundTag": "direct"
+						},
+						{
+							"type": "field",
+							"domains": [
+								"v2fly.org",
+								"github.com"
 							],
 							"outboundTag": "direct"
 						},
@@ -69,6 +78,7 @@ func TestRouterConfig(t *testing.T) {
 					{
 						Tag:              "b1",
 						OutboundSelector: []string{"test"},
+						Strategy:         "random",
 					},
 				},
 				Rule: []*router.RoutingRule{
@@ -81,6 +91,21 @@ func TestRouterConfig(t *testing.T) {
 							{
 								Type:  router.Domain_Plain,
 								Value: "qq.com",
+							},
+						},
+						TargetTag: &router.RoutingRule_Tag{
+							Tag: "direct",
+						},
+					},
+					{
+						Domain: []*router.Domain{
+							{
+								Type:  router.Domain_Plain,
+								Value: "v2fly.org",
+							},
+							{
+								Type:  router.Domain_Plain,
+								Value: "github.com",
 							},
 						},
 						TargetTag: &router.RoutingRule_Tag{
@@ -147,6 +172,14 @@ func TestRouterConfig(t *testing.T) {
 						},
 						{
 							"type": "field",
+							"domains": [
+								"v2fly.org",
+								"github.com"
+							],
+							"outboundTag": "direct"
+						},
+						{
+							"type": "field",
 							"ip": [
 								"10.0.0.0/8",
 								"::1/128"
@@ -169,6 +202,21 @@ func TestRouterConfig(t *testing.T) {
 							{
 								Type:  router.Domain_Plain,
 								Value: "qq.com",
+							},
+						},
+						TargetTag: &router.RoutingRule_Tag{
+							Tag: "direct",
+						},
+					},
+					{
+						Domain: []*router.Domain{
+							{
+								Type:  router.Domain_Plain,
+								Value: "v2fly.org",
+							},
+							{
+								Type:  router.Domain_Plain,
+								Value: "github.com",
 							},
 						},
 						TargetTag: &router.RoutingRule_Tag{
@@ -211,6 +259,14 @@ func TestRouterConfig(t *testing.T) {
 					},
 					{
 						"type": "field",
+						"domains": [
+							"v2fly.org",
+							"github.com"
+						],
+						"outboundTag": "direct"
+					},
+					{
+						"type": "field",
 						"ip": [
 							"10.0.0.0/8",
 							"::1/128"
@@ -232,6 +288,21 @@ func TestRouterConfig(t *testing.T) {
 							{
 								Type:  router.Domain_Plain,
 								Value: "qq.com",
+							},
+						},
+						TargetTag: &router.RoutingRule_Tag{
+							Tag: "direct",
+						},
+					},
+					{
+						Domain: []*router.Domain{
+							{
+								Type:  router.Domain_Plain,
+								Value: "v2fly.org",
+							},
+							{
+								Type:  router.Domain_Plain,
+								Value: "github.com",
 							},
 						},
 						TargetTag: &router.RoutingRule_Tag{

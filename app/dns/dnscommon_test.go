@@ -10,16 +10,13 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/miekg/dns"
 	"golang.org/x/net/dns/dnsmessage"
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/net"
-	v2net "v2ray.com/core/common/net"
+
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/net"
+	dns_feature "github.com/v2fly/v2ray-core/v4/features/dns"
 )
 
 func Test_parseResponse(t *testing.T) {
-	type args struct {
-		payload []byte
-	}
-
 	var p [][]byte
 
 	ans := new(dns.Msg)
@@ -55,21 +52,29 @@ func Test_parseResponse(t *testing.T) {
 		want    *IPRecord
 		wantErr bool
 	}{
-		{"empty",
-			&IPRecord{0, []v2net.Address(nil), time.Time{}, dnsmessage.RCodeSuccess},
+		{
+			"empty",
+			&IPRecord{0, []net.Address(nil), time.Time{}, dnsmessage.RCodeSuccess},
 			false,
 		},
-		{"error",
+		{
+			"error",
 			nil,
 			true,
 		},
-		{"a record",
-			&IPRecord{1, []v2net.Address{v2net.ParseAddress("8.8.8.8"), v2net.ParseAddress("8.8.4.4")},
-				time.Time{}, dnsmessage.RCodeSuccess},
+		{
+			"a record",
+			&IPRecord{
+				1,
+				[]net.Address{net.ParseAddress("8.8.8.8"), net.ParseAddress("8.8.4.4")},
+				time.Time{},
+				dnsmessage.RCodeSuccess,
+			},
 			false,
 		},
-		{"aaaa record",
-			&IPRecord{2, []v2net.Address{v2net.ParseAddress("2001::123:8888"), v2net.ParseAddress("2001::123:8844")}, time.Time{}, dnsmessage.RCodeSuccess},
+		{
+			"aaaa record",
+			&IPRecord{2, []net.Address{net.ParseAddress("2001::123:8888"), net.ParseAddress("2001::123:8844")}, time.Time{}, dnsmessage.RCodeSuccess},
 			false,
 		},
 	}
@@ -94,13 +99,12 @@ func Test_parseResponse(t *testing.T) {
 }
 
 func Test_buildReqMsgs(t *testing.T) {
-
 	stubID := func() uint16 {
 		return uint16(rand.Uint32())
 	}
 	type args struct {
 		domain  string
-		option  IPOption
+		option  dns_feature.IPOption
 		reqOpts *dnsmessage.Resource
 	}
 	tests := []struct {
@@ -108,10 +112,26 @@ func Test_buildReqMsgs(t *testing.T) {
 		args args
 		want int
 	}{
-		{"dual stack", args{"test.com", IPOption{true, true}, nil}, 2},
-		{"ipv4 only", args{"test.com", IPOption{true, false}, nil}, 1},
-		{"ipv6 only", args{"test.com", IPOption{false, true}, nil}, 1},
-		{"none/error", args{"test.com", IPOption{false, false}, nil}, 0},
+		{"dual stack", args{"test.com", dns_feature.IPOption{
+			IPv4Enable: true,
+			IPv6Enable: true,
+			FakeEnable: false,
+		}, nil}, 2},
+		{"ipv4 only", args{"test.com", dns_feature.IPOption{
+			IPv4Enable: true,
+			IPv6Enable: false,
+			FakeEnable: false,
+		}, nil}, 1},
+		{"ipv6 only", args{"test.com", dns_feature.IPOption{
+			IPv4Enable: false,
+			IPv6Enable: true,
+			FakeEnable: false,
+		}, nil}, 1},
+		{"none/error", args{"test.com", dns_feature.IPOption{
+			IPv4Enable: false,
+			IPv6Enable: false,
+			FakeEnable: false,
+		}, nil}, 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -153,8 +173,8 @@ func TestFqdn(t *testing.T) {
 		args args
 		want string
 	}{
-		{"with fqdn", args{"www.v2ray.com."}, "www.v2ray.com."},
-		{"without fqdn", args{"www.v2ray.com"}, "www.v2ray.com."},
+		{"with fqdn", args{"www.v2fly.org."}, "www.v2fly.org."},
+		{"without fqdn", args{"www.v2fly.org"}, "www.v2fly.org."},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

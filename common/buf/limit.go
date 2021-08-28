@@ -2,6 +2,7 @@ package buf
 
 import (
 	"context"
+
 	"golang.org/x/time/rate"
 )
 

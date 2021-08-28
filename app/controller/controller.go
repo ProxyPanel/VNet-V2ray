@@ -9,29 +9,30 @@ import (
 	"time"
 
 	"github.com/r3labs/diff"
-	"v2ray.com/core"
-	"v2ray.com/core/app/proxyman"
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/acme"
-	"v2ray.com/core/common/api"
-	"v2ray.com/core/common/errors"
-	"v2ray.com/core/common/log"
-	"v2ray.com/core/common/net"
-	"v2ray.com/core/common/protocol"
-	"v2ray.com/core/common/retry"
-	"v2ray.com/core/common/serial"
-	"v2ray.com/core/common/task"
-	"v2ray.com/core/common/uuid"
-	controllerInterface "v2ray.com/core/features/controller"
-	"v2ray.com/core/features/inbound"
-	"v2ray.com/core/infra/conf"
-	"v2ray.com/core/proxy"
-	"v2ray.com/core/proxy/freedom"
-	"v2ray.com/core/proxy/vmess"
-	vmess_inbound "v2ray.com/core/proxy/vmess/inbound"
-	"v2ray.com/core/transport/internet"
-	"v2ray.com/core/transport/internet/tls"
-	"v2ray.com/core/transport/internet/websocket"
+
+	core "github.com/v2fly/v2ray-core/v4"
+	"github.com/v2fly/v2ray-core/v4/app/proxyman"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/acme"
+	"github.com/v2fly/v2ray-core/v4/common/api"
+	"github.com/v2fly/v2ray-core/v4/common/errors"
+	"github.com/v2fly/v2ray-core/v4/common/log"
+	"github.com/v2fly/v2ray-core/v4/common/net"
+	"github.com/v2fly/v2ray-core/v4/common/protocol"
+	"github.com/v2fly/v2ray-core/v4/common/retry"
+	"github.com/v2fly/v2ray-core/v4/common/serial"
+	"github.com/v2fly/v2ray-core/v4/common/task"
+	"github.com/v2fly/v2ray-core/v4/common/uuid"
+	controllerInterface "github.com/v2fly/v2ray-core/v4/features/controller"
+	"github.com/v2fly/v2ray-core/v4/features/inbound"
+	"github.com/v2fly/v2ray-core/v4/infra/conf"
+	"github.com/v2fly/v2ray-core/v4/proxy"
+	"github.com/v2fly/v2ray-core/v4/proxy/freedom"
+	"github.com/v2fly/v2ray-core/v4/proxy/vmess"
+	vmess_inbound "github.com/v2fly/v2ray-core/v4/proxy/vmess/inbound"
+	"github.com/v2fly/v2ray-core/v4/transport/internet"
+	"github.com/v2fly/v2ray-core/v4/transport/internet/tls"
+	"github.com/v2fly/v2ray-core/v4/transport/internet/websocket"
 )
 
 //go:generate errorgen
@@ -59,8 +60,7 @@ func (c *Controller) Start() error {
 	var err error
 	c.nodeInfo, err = c.fetchNodeInfo()
 	if err != nil {
-		err.(*errors.Error).AtError().WriteToLog()
-		os.Exit(23)
+		panic(err.(*errors.Error).AtError().String())
 	}
 	inboundConfig, outboundConfig, err := c.getConfigFromRemote()
 	if err != nil {
@@ -143,15 +143,15 @@ func (c *Controller) getConfigFromRemote() (*core.InboundHandlerConfig, *core.Ou
 func (c *Controller) buildInboundConfig(info *api.NodeInfo) (*core.InboundHandlerConfig, error) {
 	receiverSettings := &proxyman.ReceiverConfig{}
 	receiverSettings.PortRange = &net.PortRange{
-		From: uint32(info.V2Port),
-		To:   uint32(info.V2Port),
+		From: uint32(info.Port),
+		To:   uint32(info.Port),
 	}
 	receiverSettings.SniffingSettings = &proxyman.SniffingConfig{
 		Enabled:             true,
 		DestinationOverride: []string{"http", "tls"},
 	}
 
-	networkType, err := conf.TransportProtocol(info.V2Net).Build()
+	networkType, err := conf.TransportProtocol(info.Protocol).Build()
 	if err != nil {
 		return nil, newError("convert v2net failed").Base(err)
 	}
@@ -160,27 +160,27 @@ func (c *Controller) buildInboundConfig(info *api.NodeInfo) (*core.InboundHandle
 		ProtocolName: networkType,
 	}
 
-	if info.V2TLS {
+	if info.TLS {
 		tlsConfig := new(tls.Config)
 		tlsConfig.AllowInsecure = true
-		tlsConfig.AllowInsecureCiphers = true
+		//tlsConfig.AllowInsecureCiphers = true
 
 		var certificate *tls.Certificate
-		if info.Key != "" && info.Cert != "" {
+		if info.Key != "" && info.Pem != "" {
 			certificate = new(tls.Certificate)
 			certificate.Key = []byte(info.Key)
-			certificate.Certificate = []byte(info.Cert)
+			certificate.Certificate = []byte(info.Pem)
 			certificate.Usage = tls.Certificate_ENCIPHERMENT
 		} else {
-			if info.V2TLSProvider == "" {
-				return nil, newError("V2TLSProvider is empty")
+			if info.TLSProvider == "" {
+				return nil, newError("TLSProvider is empty")
 			}
-			acmeConfig, err := acme.ConfigFromString(info.V2TLSProvider)
+			acmeConfig, err := acme.ConfigFromString(info.TLSProvider)
 			if err != nil {
 				return nil, err
 			}
 
-			acmeConfig.Domain = info.V2Host
+			acmeConfig.Domain = info.Host
 			certificate, err = acme.AutoCert(acmeConfig)
 			if err != nil {
 				fmt.Println(newError("auto cert failed").Base(err).String())
@@ -202,6 +202,7 @@ func (c *Controller) buildInboundConfig(info *api.NodeInfo) (*core.InboundHandle
 
 		// add config
 		tlsConfig.Certificate = append(tlsConfig.Certificate, certificate)
+		tlsConfig.NextProtocol = []string{"h2"}
 		tm := serial.ToTypedMessage(tlsConfig)
 		receiverSettings.StreamSettings.SecurityType = tm.Type
 		receiverSettings.StreamSettings.SecuritySettings = append(receiverSettings.StreamSettings.SecuritySettings, tm)
@@ -209,11 +210,11 @@ func (c *Controller) buildInboundConfig(info *api.NodeInfo) (*core.InboundHandle
 
 	if networkType == "websocket" {
 		wsconfig := &websocket.Config{
-			Path: info.V2Path,
+			Path: info.Path,
 			Header: []*websocket.Header{
-				&websocket.Header{
+				{
 					Key:   "host",
-					Value: info.V2Host,
+					Value: info.Host,
 				},
 			},
 		}
@@ -275,19 +276,19 @@ func (c *Controller) getUserFromRemote() error {
 				user.Email = strconv.Itoa(item.UID)
 				account := new(vmess.MemoryAccount)
 
-				if c.nodeInfo.SpeedLimit == 0 || c.nodeInfo.SpeedLimit > item.SpeedLimit {
-					account.Limit = item.SpeedLimit
+				if c.nodeInfo.Speed == 0 || c.nodeInfo.Speed > item.Speed {
+					account.Limit = item.Speed
 				} else {
-					account.Limit = c.nodeInfo.SpeedLimit
+					account.Limit = c.nodeInfo.Speed
 				}
 
-				id, err := uuid.ParseString(item.VmessUID)
+				id, err := uuid.ParseString(item.UUID)
 				if err != nil {
 					newError("add user failed").Base(err).AtError().WriteToLog()
 					continue
 				}
 				account.ID = protocol.NewID(id)
-				account.AlterIDs = protocol.NewAlterIDs(account.ID, uint16(c.nodeInfo.V2AlterID))
+				account.AlterIDs = protocol.NewAlterIDs(account.ID, uint16(c.nodeInfo.AlterId))
 				user.Account = account
 				memoryUserList = append(memoryUserList, user)
 				log.Record(&log.GeneralMessage{
@@ -333,7 +334,7 @@ func (c *Controller) startNodeInfoMonitor() error {
 			}
 			if diff.Changed(c.nodeInfo, nodeInfo) {
 				fmt.Println(newError("node info changed!!!").String())
-				os.Exit(23)
+				os.Exit(0)
 			}
 			return nil
 		},

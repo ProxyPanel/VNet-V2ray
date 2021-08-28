@@ -5,13 +5,11 @@ import (
 	"syscall"
 	"time"
 
-	"v2ray.com/core/common/net"
-	"v2ray.com/core/common/session"
+	"github.com/v2fly/v2ray-core/v4/common/net"
+	"github.com/v2fly/v2ray-core/v4/common/session"
 )
 
-var (
-	effectiveSystemDialer SystemDialer = &DefaultSystemDialer{}
-)
+var effectiveSystemDialer SystemDialer = &DefaultSystemDialer{}
 
 type SystemDialer interface {
 	Dial(ctx context.Context, source net.Address, destination net.Destination, sockopt *SocketConfig) (net.Conn, error)
@@ -68,7 +66,6 @@ func (d *DefaultSystemDialer) Dial(ctx context.Context, src net.Address, dest ne
 
 	dialer := &net.Dialer{
 		Timeout:   time.Second * 16,
-		DualStack: true,
 		LocalAddr: resolveSrcAddr(dest.Network, src),
 	}
 
@@ -160,7 +157,7 @@ func (v *SimpleSystemDialer) Dial(ctx context.Context, src net.Address, dest net
 // v2ray:api:stable
 func UseAlternativeSystemDialer(dialer SystemDialer) {
 	if dialer == nil {
-		effectiveSystemDialer = &DefaultSystemDialer{}
+		dialer = &DefaultSystemDialer{}
 	}
 	effectiveSystemDialer = dialer
 }

@@ -6,8 +6,9 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"v2ray.com/core/common"
-	. "v2ray.com/core/common/buf"
+
+	"github.com/v2fly/v2ray-core/v4/common"
+	. "github.com/v2fly/v2ray-core/v4/common/buf"
 )
 
 func TestBufferClear(t *testing.T) {
@@ -22,7 +23,7 @@ func TestBufferClear(t *testing.T) {
 
 	buffer.Clear()
 	if buffer.Len() != 0 {
-		t.Error("expect 0 lenght, but got ", buffer.Len())
+		t.Error("expect 0 length, but got ", buffer.Len())
 	}
 }
 
@@ -77,6 +78,7 @@ func TestBufferByte(t *testing.T) {
 		buffer.Release()
 	}
 }
+
 func TestBufferResize(t *testing.T) {
 	buffer := New()
 	defer buffer.Release()

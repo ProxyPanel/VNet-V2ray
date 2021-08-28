@@ -1,24 +1,38 @@
 package router_test
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
-	proto "github.com/golang/protobuf/proto"
-	"v2ray.com/core/app/router"
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/net"
-	"v2ray.com/core/common/platform"
-	"v2ray.com/core/common/platform/filesystem"
+	"google.golang.org/protobuf/proto"
+
+	"github.com/v2fly/v2ray-core/v4/app/router"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/net"
+	"github.com/v2fly/v2ray-core/v4/common/platform/filesystem"
 )
 
 func init() {
+	const geoipURL = "https://raw.githubusercontent.com/v2fly/geoip/release/geoip.dat"
+
 	wd, err := os.Getwd()
 	common.Must(err)
 
-	common.Must(filesystem.CopyFile(platform.GetAssetLocation("geoip.dat"), filepath.Join(wd, "..", "..", "release", "config", "geoip.dat")))
-	common.Must(filesystem.CopyFile(platform.GetAssetLocation("geosite.dat"), filepath.Join(wd, "..", "..", "release", "config", "geosite.dat")))
+	tempPath := filepath.Join(wd, "..", "..", "testing", "temp")
+	geoipPath := filepath.Join(tempPath, "geoip.dat")
+
+	os.Setenv("v2ray.location.asset", tempPath)
+
+	if _, err := os.Stat(geoipPath); err != nil && errors.Is(err, fs.ErrNotExist) {
+		common.Must(os.MkdirAll(tempPath, 0o755))
+		geoipBytes, err := common.FetchHTTPContent(geoipURL)
+		common.Must(err)
+		common.Must(filesystem.WriteFile(geoipPath, geoipBytes))
+	}
 }
 
 func TestGeoIPMatcherContainer(t *testing.T) {
@@ -84,7 +98,8 @@ func TestGeoIPMatcher(t *testing.T) {
 		{
 			Input:  "192.0.1.0",
 			Output: false,
-		}, {
+		},
+		{
 			Input:  "0.1.0.0",
 			Output: true,
 		},
@@ -107,6 +122,42 @@ func TestGeoIPMatcher(t *testing.T) {
 		{
 			Input:  "91.108.255.254",
 			Output: true,
+		},
+	}
+
+	for _, testCase := range testCases {
+		ip := net.ParseAddress(testCase.Input).IP()
+		actual := matcher.Match(ip)
+		if actual != testCase.Output {
+			t.Error("expect input", testCase.Input, "to be", testCase.Output, ", but actually", actual)
+		}
+	}
+}
+
+func TestGeoIPReverseMatcher(t *testing.T) {
+	cidrList := router.CIDRList{
+		{Ip: []byte{8, 8, 8, 8}, Prefix: 32},
+		{Ip: []byte{91, 108, 4, 0}, Prefix: 16},
+	}
+	matcher := &router.GeoIPMatcher{}
+	matcher.SetReverseMatch(true) // Reverse match
+	common.Must(matcher.Init(cidrList))
+
+	testCases := []struct {
+		Input  string
+		Output bool
+	}{
+		{
+			Input:  "8.8.8.8",
+			Output: false,
+		},
+		{
+			Input:  "2001:cdba::3257:9652",
+			Output: true,
+		},
+		{
+			Input:  "91.108.255.254",
+			Output: false,
 		},
 	}
 
@@ -154,7 +205,7 @@ func loadGeoIP(country string) ([]*router.CIDR, error) {
 	}
 
 	for _, geoip := range geoipList.Entry {
-		if geoip.CountryCode == country {
+		if strings.EqualFold(geoip.CountryCode, country) {
 			return geoip.Cidr, nil
 		}
 	}

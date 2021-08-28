@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"v2ray.com/core/common"
-	"v2ray.com/core/common/buf"
+	"github.com/v2fly/v2ray-core/v4/common"
+	"github.com/v2fly/v2ray-core/v4/common/buf"
 )
 
 type FetchCommand struct{}
@@ -39,7 +39,6 @@ func (c *FetchCommand) Execute(args []string) error {
 
 // FetchHTTPContent dials https for remote content
 func FetchHTTPContent(target string) ([]byte, error) {
-
 	parsedTarget, err := url.Parse(target)
 	if err != nil {
 		return nil, newError("invalid URL: ", target).Base(err)

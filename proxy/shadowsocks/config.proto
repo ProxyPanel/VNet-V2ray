@@ -2,35 +2,27 @@ syntax = "proto3";
 
 package v2ray.core.proxy.shadowsocks;
 option csharp_namespace = "V2Ray.Core.Proxy.Shadowsocks";
-option go_package = "shadowsocks";
+option go_package = "github.com/v2fly/v2ray-core/v4/proxy/shadowsocks";
 option java_package = "com.v2ray.core.proxy.shadowsocks";
 option java_multiple_files = true;
 
-import "v2ray.com/core/common/net/network.proto";
-import "v2ray.com/core/common/protocol/user.proto";
-import "v2ray.com/core/common/protocol/server_spec.proto";
+import "common/net/network.proto";
+import "common/protocol/user.proto";
+import "common/protocol/server_spec.proto";
 
 message Account {
-  enum OneTimeAuth {
-    Auto = 0;
-    Disabled = 1;
-    Enabled = 2;
-  }
   string password = 1;
   CipherType cipher_type = 2;
-  OneTimeAuth ota = 3;
+
+  bool iv_check = 3;
 }
 
 enum CipherType {
   UNKNOWN = 0;
-  AES_128_CFB = 1;
-  AES_256_CFB = 2;
-  CHACHA20 = 3;
-  CHACHA20_IETF = 4;
-  AES_128_GCM = 5;
-  AES_256_GCM = 6;
-  CHACHA20_POLY1305 = 7;
-  NONE = 8;
+  AES_128_GCM = 1;
+  AES_256_GCM = 2;
+  CHACHA20_POLY1305 = 3;
+  NONE = 4;
 }
 
 message ServerConfig {

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package v2ray.core.app.rule;
 option csharp_namespace = "V2Ray.Core.App.Rule";
-option go_package = "rule";
+option go_package = "github.com/v2fly/v2ray-core/v4/app/rule";
 option java_package = "com.v2ray.core.app.rule";
 option java_multiple_files = true;
 
