@@ -328,10 +328,10 @@ func (w *ServerWorker) doRedirect(ctx context.Context, meta *FrameMetadata, rawR
 
 		if meta.Target.Port == 80 {
 			// if n	ode info contain redirect url then return http status with 302 otherwise return 403 with default content
-			if nodeInfo.Redirect == "" {
+			if nodeInfo.RedirectUrl == "" {
 				bufferedWriter.Write([]byte(httpx.Http403("该网站被阻止访问，如需访问请联系管理员。\r\n")))
 			} else {
-				bufferedWriter.Write([]byte(httpx.Http302(nodeInfo.Redirect)))
+				bufferedWriter.Write([]byte(httpx.Http302(nodeInfo.RedirectUrl)))
 			}
 			return
 		}
@@ -362,11 +362,11 @@ func (w *ServerWorker) doRedirect(ctx context.Context, meta *FrameMetadata, rawR
 			tlsConn := tls.Server(fakeConn, config)
 
 			// if node info contain redirect url then return http status with 302 otherwise return 403 with default content
-			if nodeInfo.Redirect == "" {
+			if nodeInfo.RedirectUrl == "" {
 				_, err = tlsConn.Write([]byte(httpx.Http403("该网站被阻止访问，如需访问请联系管理员。\r\n")))
 
 			} else {
-				_, err = tlsConn.Write([]byte(httpx.Http302(nodeInfo.Redirect)))
+				_, err = tlsConn.Write([]byte(httpx.Http302(nodeInfo.RedirectUrl)))
 			}
 
 			if err != nil {

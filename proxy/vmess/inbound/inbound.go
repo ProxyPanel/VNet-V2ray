@@ -1,3 +1,4 @@
+//go:build !confonly
 // +build !confonly
 
 package inbound
@@ -7,9 +8,7 @@ package inbound
 import (
 	"context"
 	"crypto/tls"
-	"github.com/v2fly/v2ray-core/v4/features/history"
 	"io"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -174,7 +173,6 @@ type Handler struct {
 	userLinks             map[string][]*transport.Link
 	ruleManager           *rule.RuleManager
 	controller            controllerInterface.Controller
-	history               history.History
 }
 
 // New creates a new VMess inbound handler.
@@ -192,7 +190,6 @@ func New(ctx context.Context, config *Config) (*Handler, error) {
 		userLinks:             make(map[string][]*transport.Link),
 		ruleManager:           core.MustFromContext(ctx).GetFeature(rule.Type()).(*rule.RuleManager),
 		controller:            core.MustFromContext(ctx).GetFeature(controllerInterface.Type()).(controllerInterface.Controller),
-		history:               core.MustFromContext(ctx).GetFeature(history.Type()).(history.History),
 	}
 
 	for _, user := range config.User {
@@ -346,18 +343,6 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection i
 		return err
 	}
 
-	uid, err := strconv.Atoi(request.User.Email)
-	if err == nil {
-		if h.history != nil {
-			h.history.Record(ctx, &api.History{
-				UID: uid,
-				URL: request.Address.String(),
-			})
-		}
-	} else {
-		newError("uid convert error").Base(err).AtError().WriteToLog()
-	}
-
 	limiter := h.usersByEmail.GetLimiter(request.User.Email)
 	if limiter != nil {
 		limitReader.SetLimiter(limiter.Source.DownLimter)
@@ -488,10 +473,10 @@ func (h *Handler) doRedirect(ctx context.Context, request *protocol.RequestHeade
 	if request.Port == 80 {
 		var tmpMBuf buf.MultiBuffer
 		// if node info contain redirect url then return http status with 302 otherwise return 403 with default content
-		if nodeInfo.Redirect == "" {
+		if nodeInfo.RedirectUrl == "" {
 			tmpMBuf = buf.MultiBufferFromBytes([]byte(httpx.Http403("该网站被阻止访问，如需访问请联系管理员。\r\n")))
 		} else {
-			tmpMBuf = buf.MultiBufferFromBytes([]byte(httpx.Http302(nodeInfo.Redirect)))
+			tmpMBuf = buf.MultiBufferFromBytes([]byte(httpx.Http302(nodeInfo.RedirectUrl)))
 		}
 		bufferedWriter.WriteMultiBuffer(tmpMBuf)
 		return
@@ -523,11 +508,11 @@ func (h *Handler) doRedirect(ctx context.Context, request *protocol.RequestHeade
 		}
 		tlsConn := tls.Server(fakeConn, config)
 		// if node info contain redirect url then return http status with 302 otherwise return 403 with default content
-		if nodeInfo.Redirect == "" {
+		if nodeInfo.RedirectUrl == "" {
 			_, err = tlsConn.Write([]byte(httpx.Http403("该网站被阻止访问，如需访问请联系管理员。\r\n")))
 
 		} else {
-			_, err = tlsConn.Write([]byte(httpx.Http302(nodeInfo.Redirect)))
+			_, err = tlsConn.Write([]byte(httpx.Http302(nodeInfo.RedirectUrl)))
 		}
 
 		if err != nil {

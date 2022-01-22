@@ -7,7 +7,7 @@ import (
 )
 
 func CreateClient() *ApiClient {
-	client := NewClient("https://v.rcauth.com", 1, "yxl5yqkh")
+	client := NewClient("https://www.vnetpanel.com", 4, "nhwzntuetd2kkb5a")
 
 	return client
 }
@@ -42,6 +42,15 @@ func TestApiClient_GetUserList(t *testing.T) {
 		t.Error(err)
 	}
 	t.Log(userList)
+}
+
+func TestApiClient_GetNodeRule(t *testing.T) {
+	client := CreateClient()
+	nodeRule, err := client.GetNodeRule()
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log(nodeRule)
 }
 
 func TestApiClient_ReportUserTraffic(t *testing.T) {
@@ -89,7 +98,7 @@ func TestApiClient_ReportIllegal(t *testing.T) {
 		RuleID: 0,
 		Reason: "test",
 	}
-	err := client.ReportIllegal([]*IllegalReport{illegalReport})
+	err := client.ReportIllegal(illegalReport)
 	if err != nil {
 		t.Error(err)
 	}

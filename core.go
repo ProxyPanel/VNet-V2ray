@@ -18,9 +18,9 @@ import (
 )
 
 var (
-	version  = "4.40.0"
+	version  = "1.8.0"
 	build    = "Custom"
-	codename = "V2Fly, a community-driven edition of V2Ray."
+	codename = "vnet-v2ray, a community-driven edition of V2Fly."
 	intro    = "A unified platform for anti-censorship."
 )
 
@@ -33,7 +33,7 @@ func Version() string {
 // VersionStatement returns a list of strings representing the full version info.
 func VersionStatement() []string {
 	return []string{
-		serial.Concat("V2Ray ", Version(), " (", codename, ") ", build, " (", runtime.Version(), " ", runtime.GOOS, "/", runtime.GOARCH, ")"),
+		serial.Concat("vnet-v2ray ", Version(), " (", codename, ") ", build, " (", runtime.Version(), " ", runtime.GOOS, "/", runtime.GOARCH, ")"),
 		intro,
 	}
 }

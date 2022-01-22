@@ -37,7 +37,7 @@ func (c *ApiClient) GetNodeInfo() (data *NodeInfo, err error) {
 		return nil, newError("NodeId is 0")
 	}
 
-	path := fmt.Sprintf("/api/vmess/v1/node/%d", c.NodeID)
+	path := fmt.Sprintf("/api/v2ray/v1/node/%d", c.NodeID)
 	res, err := c.
 		createCommonRequest().
 		SetResult(&Response{}).
@@ -69,7 +69,7 @@ func (c *ApiClient) ReportNodeStatus(nodeStatus *NodeStatus) error {
 		return newError("NodeId is 0")
 	}
 
-	path := fmt.Sprintf("/api/vmess/v1/node/status/%d", c.NodeID)
+	path := fmt.Sprintf("/api/v2ray/v1/nodeStatus/%d", c.NodeID)
 	request := c.createCommonRequest()
 	request.SetBody(nodeStatus)
 
@@ -94,7 +94,7 @@ func (c *ApiClient) GetUserList() (data []*User, err error) {
 		return nil, newError("NodeId is 0")
 	}
 
-	path := fmt.Sprintf("/api/vmess/v1/user/%d", c.NodeID)
+	path := fmt.Sprintf("/api/v2ray/v1/userList/%d", c.NodeID)
 	request := c.createCommonRequest()
 	request.SetResult(&Response{})
 
@@ -121,7 +121,7 @@ func (c *ApiClient) ReportNodeOnline(online []*NodeOnline) error {
 		return newError("NodeId is 0")
 	}
 
-	path := fmt.Sprintf("/api/vmess/v1/node/online/%d", c.NodeID)
+	path := fmt.Sprintf("/api/v2ray/v1/nodeOnline/%d", c.NodeID)
 	request := c.createCommonRequest()
 	request.SetResult(&Response{})
 	request.SetBody(online)
@@ -141,7 +141,7 @@ func (c *ApiClient) ReportUserTraffic(traffics []*UserTraffic) error {
 		return newError("NodeId is 0")
 	}
 
-	path := fmt.Sprintf("/api/vmess/v1/user/bandwidth/%d", c.NodeID)
+	path := fmt.Sprintf("/api/v2ray/v1/userTraffic/%d", c.NodeID)
 	request := c.createCommonRequest()
 	request.SetResult(&Response{})
 	request.SetBody(traffics)
@@ -156,12 +156,36 @@ func (c *ApiClient) ReportUserTraffic(traffics []*UserTraffic) error {
 	return nil
 }
 
-func (c *ApiClient) ReportIllegal(illegalReport []*IllegalReport) error {
+func (c *ApiClient) GetNodeRule() (rule *NodeRule, err error) {
+	if c.NodeID == 0 {
+		return nil, newError("NodeId is 0")
+	}
+
+	path := fmt.Sprintf("/api/v2ray/v1/nodeRule/%d", c.NodeID)
+	request := c.createCommonRequest()
+	request.SetResult(&Response{})
+	res, err := request.Get(c.AssembleUrl(path))
+	if err != nil {
+		return nil, newError("get node rule failed").Base(err)
+	}
+	response := res.Result().(*Response)
+	if response.Status != "success" {
+		return nil, newError("get node rule failed", response.Message)
+	}
+
+	nodeRule := new(NodeRule)
+	if err := json.Unmarshal(response.Data, &nodeRule); err != nil {
+		return nil, newError("get node rule failed").Base(err)
+	}
+	return nodeRule, nil
+}
+
+func (c *ApiClient) ReportIllegal(illegalReport *IllegalReport) error {
 	if c.NodeID == 0 {
 		return newError("NodeId is 0")
 	}
 
-	path := fmt.Sprintf("/api/vmess/v1/user/trigger/%d", c.NodeID)
+	path := fmt.Sprintf("/api/v2ray/v1/trigger/%d", c.NodeID)
 	request := c.createCommonRequest()
 	request.SetBody(illegalReport)
 	request.SetResult(&Response{})
@@ -183,7 +207,7 @@ func (c *ApiClient) PushCertification(certificate *Certificate) error {
 		return newError("NodeId is 0")
 	}
 
-	path := fmt.Sprintf("/api/vmess/v1/node/cert/%d", c.NodeID)
+	path := fmt.Sprintf("/api/v2ray/v1/certificate/%d", c.NodeID)
 	request := c.createCommonRequest()
 	request.SetBody(certificate)
 	request.SetResult(&Response{})

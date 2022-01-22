@@ -143,15 +143,15 @@ func (c *Controller) getConfigFromRemote() (*core.InboundHandlerConfig, *core.Ou
 func (c *Controller) buildInboundConfig(info *api.NodeInfo) (*core.InboundHandlerConfig, error) {
 	receiverSettings := &proxyman.ReceiverConfig{}
 	receiverSettings.PortRange = &net.PortRange{
-		From: uint32(info.Port),
-		To:   uint32(info.Port),
+		From: uint32(info.V2Port),
+		To:   uint32(info.V2Port),
 	}
 	receiverSettings.SniffingSettings = &proxyman.SniffingConfig{
 		Enabled:             true,
 		DestinationOverride: []string{"http", "tls"},
 	}
 
-	networkType, err := conf.TransportProtocol(info.Protocol).Build()
+	networkType, err := conf.TransportProtocol(info.V2Net).Build()
 	if err != nil {
 		return nil, newError("convert v2net failed").Base(err)
 	}
@@ -160,27 +160,27 @@ func (c *Controller) buildInboundConfig(info *api.NodeInfo) (*core.InboundHandle
 		ProtocolName: networkType,
 	}
 
-	if info.TLS {
+	if info.V2TLS {
 		tlsConfig := new(tls.Config)
 		tlsConfig.AllowInsecure = true
 		//tlsConfig.AllowInsecureCiphers = true
 
 		var certificate *tls.Certificate
-		if info.Key != "" && info.Pem != "" {
+		if info.Key != "" && info.Cert != "" {
 			certificate = new(tls.Certificate)
 			certificate.Key = []byte(info.Key)
-			certificate.Certificate = []byte(info.Pem)
+			certificate.Certificate = []byte(info.Cert)
 			certificate.Usage = tls.Certificate_ENCIPHERMENT
 		} else {
-			if info.TLSProvider == "" {
-				return nil, newError("TLSProvider is empty")
+			if info.V2TLSProvider == "" {
+				return nil, newError("V2TLSProvider is empty")
 			}
-			acmeConfig, err := acme.ConfigFromString(info.TLSProvider)
+			acmeConfig, err := acme.ConfigFromString(info.V2TLSProvider)
 			if err != nil {
 				return nil, err
 			}
 
-			acmeConfig.Domain = info.Host
+			acmeConfig.Domain = info.V2Host
 			certificate, err = acme.AutoCert(acmeConfig)
 			if err != nil {
 				fmt.Println(newError("auto cert failed").Base(err).String())
@@ -210,11 +210,11 @@ func (c *Controller) buildInboundConfig(info *api.NodeInfo) (*core.InboundHandle
 
 	if networkType == "websocket" {
 		wsconfig := &websocket.Config{
-			Path: info.Path,
+			Path: info.V2Path,
 			Header: []*websocket.Header{
 				{
 					Key:   "host",
-					Value: info.Host,
+					Value: info.V2Host,
 				},
 			},
 		}
@@ -276,19 +276,19 @@ func (c *Controller) getUserFromRemote() error {
 				user.Email = strconv.Itoa(item.UID)
 				account := new(vmess.MemoryAccount)
 
-				if c.nodeInfo.Speed == 0 || c.nodeInfo.Speed > item.Speed {
-					account.Limit = item.Speed
+				if c.nodeInfo.SpeedLimit == 0 || c.nodeInfo.SpeedLimit > item.SpeedLimit {
+					account.Limit = item.SpeedLimit
 				} else {
-					account.Limit = c.nodeInfo.Speed
+					account.Limit = c.nodeInfo.SpeedLimit
 				}
 
-				id, err := uuid.ParseString(item.UUID)
+				id, err := uuid.ParseString(item.VmessUID)
 				if err != nil {
 					newError("add user failed").Base(err).AtError().WriteToLog()
 					continue
 				}
 				account.ID = protocol.NewID(id)
-				account.AlterIDs = protocol.NewAlterIDs(account.ID, uint16(c.nodeInfo.AlterId))
+				account.AlterIDs = protocol.NewAlterIDs(account.ID, uint16(c.nodeInfo.V2AlterID))
 				user.Account = account
 				memoryUserList = append(memoryUserList, user)
 				log.Record(&log.GeneralMessage{
@@ -298,7 +298,7 @@ func (c *Controller) getUserFromRemote() error {
 			}
 			log.Record(&log.GeneralMessage{
 				Severity: log.Severity_Info,
-				Content:  fmt.Sprintf("updater reload %d user", len(memoryUserList)),
+				Content:  fmt.Sprintf("update reload %d user", len(memoryUserList)),
 			})
 			if err := userManager.ResetUser(c.Context, memoryUserList); err != nil {
 				runtime.GC()

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/v2fly/v2ray-core/v4/app/history"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -167,12 +166,6 @@ func startWithConfig(c *Config) {
 		AccessLogPath: c.AccessLogPath,
 		ErrorLogPath:  c.ErrorLogPath,
 		ErrorLogLevel: clog.Severity_Info,
-	}))
-
-	config.App = append(config.App, serial.ToTypedMessage(&history.Config{
-		ApiServer: c.URL,
-		Key:       c.Key,
-		NodeId:    c.ID,
 	}))
 
 	server, err := core.New(config)
